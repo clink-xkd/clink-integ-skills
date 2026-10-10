@@ -32,48 +32,33 @@ Do not read or cite `.cache/official-docs/llms-full.txt` before this freshness c
 
 ## Payment Skill Context Sources
 
-For merchant skill for generic agent integration and merchant skill for OpenClaw integration, the current payment skill repositories are also source context.
+For merchant skill for generic agent integration and merchant skill for OpenClaw integration, the Clink MCP payment contract is the source context.
 
-Before generating code, generating integration guidance, or reviewing a merchant skill integration that depends on a payment skill, run the scenario-specific loader.
+Before generating code, generating integration guidance, or reviewing a merchant skill integration that depends on the Clink MCP payment layer, run the context loader.
 
-For OpenClaw agent review, run:
+For OpenClaw agent review and for generic agent review, run:
 
-- `node scripts/load_payment_skill_contexts.mjs --dependency openclaw-payment-skills --print-path`
-
-For generic agent review, run:
-
-- `node scripts/load_payment_skill_contexts.mjs --dependency agentic-payment-skills --print-path`
+- `node scripts/load_mcp_skill_context.mjs --print-path`
 
 Then read the generated context file printed by the command before checking the merchant skill implementation.
 
 This command:
 
-- downloads only the requested GitHub codeload zip context for `agentic-payment-skills` or `openclaw-payment-skills`
-- writes the requested context file under `.cache/payment-skill-contexts/<dependency>.md`
-- records source, ref, commit, and fallback status in metadata files under `.cache/payment-skill-contexts/`
+- resolves the MCP payment contract context in priority order: `CLINK_MCP_RULES_PATH` (a local snapshot of the MCP `clink://skill/rules` resource), then `CLINK_MCP_SKILL_PATH` (a local `clink-payment/SKILL.md` copy), then the vendored `references/clink-mcp-payment-skill.md` fallback
+- writes the resolved context file under `.cache/mcp-skill-context/`
+- records source, resolution priority, and fallback status in metadata files under `.cache/mcp-skill-context/`
 - never runs `git pull` in sibling working trees and never mutates local payment skill worktrees
-- falls back to sibling local skill files only when zip download fails, and marks that fallback in the metadata
-
-Default zip download sources:
-
-- `https://codeload.github.com/clinkbillcom/agentic-payment-skills/zip/refs/heads/main`
-- `https://codeload.github.com/clinkbillcom/openclaw-payment-skills/zip/refs/heads/main`
-
-Fallback candidate zip download sources:
-
-- `https://codeload.github.com/clinkbillcom/agentic-payment-skill/zip/refs/heads/main`
-- `https://codeload.github.com/clinkbillcom/openclaw-payment-skill/zip/refs/heads/main`
 
 Environment overrides:
 
-- `CLINK_AGENTIC_PAYMENT_SKILLS_URL`
-- `CLINK_OPENCLAW_PAYMENT_SKILLS_URL`
-- `CLINK_AGENTIC_PAYMENT_SKILLS_PATH`
-- `CLINK_OPENCLAW_PAYMENT_SKILLS_PATH`
+- `CLINK_MCP_RULES_PATH`
+- `CLINK_MCP_SKILL_PATH`
 
-If the command reports `latestRemoteContext: false` or a fallback warning, state that the payment-skill context is not confirmed latest before relying on exact tool names, exit handling, message-routing directives, or ownership rules.
+When the Host has the `clink` MCP connection, the authoritative payment rules are the `clink://skill/rules` resource, or `get_skill_manifest` with `include_rules: true` when the Host cannot read MCP resources. Those server rules supersede any locally installed skill text, so this local context is a design aid, not the runtime authority.
 
-Review the merchant skill against the loaded payment skill context for correctness and completeness. For OpenClaw, verify the merchant skill integrates with `openclaw-payment-skills` contracts. For generic agent integration, verify the merchant skill or adapter integrates with `agentic-payment-skills` / `clink-payment-skill` contracts.
+If the command reports a fallback warning, state that the MCP payment contract context is not confirmed latest before relying on exact tool names, `next_action` handling, message-routing directives, or ownership rules.
+
+Review the merchant skill against the loaded MCP payment contract for correctness and completeness. For OpenClaw, verify the merchant skill integrates with its OpenClaw runtime contracts. For generic agent integration, verify the merchant skill or adapter integrates with the `clink-payment` skill and the `clink` MCP server contracts instead of the legacy `clink-cli` stack.
 
 If the user explicitly asks to refresh or update the docs, run:
 
@@ -108,7 +93,7 @@ When webhook implementation is involved, also inspect the related webhook docs a
 
 For merchant skill for OpenClaw integration, read:
 
-1. the OpenClaw payment skill context from `node scripts/load_payment_skill_contexts.mjs --dependency openclaw-payment-skills --print-path`
+1. the MCP payment contract context from `node scripts/load_mcp_skill_context.mjs --print-path`
 1. overview and integration content in `llms-full.txt`
 2. API reference content in `llms-full.txt`
 3. local docs and schemas related to:
@@ -118,7 +103,7 @@ For merchant skill for OpenClaw integration, read:
 
 For merchant skill for generic agent integration, read:
 
-1. the generic agent payment skill context from `node scripts/load_payment_skill_contexts.mjs --dependency agentic-payment-skills --print-path`
+1. the MCP payment contract context from `node scripts/load_mcp_skill_context.mjs --print-path`
 1. overview and integration content in `llms-full.txt`
 2. API reference content in `llms-full.txt`
 3. local docs and schemas related to:
@@ -133,7 +118,7 @@ For merchant skill for generic agent integration, read:
 - refresh the cached official docs before use if the cache is older than 7 days
 - if the user explicitly asks to refresh docs, force-refresh before continuing
 - use the freshest cached `llms-full.txt` before naming exact endpoints, fields, schemas, or webhook events
-- use the freshest available payment skill context before naming exact payment skill tools, CLI behavior, handoff ownership rules, notification directives, or review findings about `agentic-payment-skills` / `openclaw-payment-skills`
+- use the freshest available MCP payment contract context before naming exact MCP tools, `next_action` types, handoff ownership rules, notification directives, or review findings about the `clink-payment` skill and the `clink` MCP server
 - do not infer a public API exists unless local docs support it
 - if local docs are incomplete, state that clearly
 

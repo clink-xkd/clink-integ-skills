@@ -7,9 +7,9 @@ This file is for final review and self-check. It is not the primary workflow doc
 ## Global Checks
 
 - does the output stay aligned with the local Clink docs available in the current environment
-- for OpenClaw agent review, did the review load and read `openclaw-payment-skills` through `node scripts/load_payment_skill_contexts.mjs --dependency openclaw-payment-skills --print-path`
-- for generic agent review, did the review load and read `agentic-payment-skills` through `node scripts/load_payment_skill_contexts.mjs --dependency agentic-payment-skills --print-path`
-- if payment skill context fell back to local files, does the output disclose that exact payment skill behavior is not confirmed latest
+- for OpenClaw agent review, did the review load and read the MCP payment contract through `node scripts/load_mcp_skill_context.mjs --print-path`
+- for generic agent review, did the review load and read the MCP payment contract through `node scripts/load_mcp_skill_context.mjs --print-path`
+- if the MCP payment contract context fell back to local files, does the output disclose that exact MCP tool behavior is not confirmed latest, and does it treat `clink://skill/rules` as the runtime authority
 - are exact API claims backed by `api-reference/openapi.json`
 - does the output avoid inventing undocumented behavior
 - is the scenario routing correct
@@ -108,10 +108,10 @@ This file is for final review and self-check. It is not the primary workflow doc
 
 ## Merchant Skill for OpenClaw Integration Checks
 
-- does the design use `openclaw-payment-skills` for the OpenClaw payment skill path
-- does the design align exact OpenClaw payment tool names, return directives, and notification ownership with the loaded `openclaw-payment-skills` context
-- does the merchant skill call, handle, and resume according to the loaded `openclaw-payment-skills` contract without adding duplicate payment-layer behavior
-- does the design clearly distinguish merchant skill from `openclaw-payment-skills`
+- does the design use the `clink-payment` skill and the `clink` MCP server for the OpenClaw payment skill path
+- does the design align exact MCP tool names, `next_action` handling, return directives, and notification ownership with the loaded `clink-payment` MCP payment contract
+- does the merchant skill call, handle, and resume according to the loaded `clink-payment` MCP contract without adding duplicate payment-layer behavior
+- does the design clearly distinguish merchant skill from the Clink MCP payment layer
 - does it define merchant server responsibilities
 - does it include agent payment session creation/querying
 - does it clarify whether the flow is session mode or direct mode
@@ -127,28 +127,32 @@ This file is for final review and self-check. It is not the primary workflow doc
 
 - does the design identify that the runtime is not OpenClaw when taking the merchant skill for generic agent path
 - does it define merchant skill or merchant tool responsibilities before delegating to the generic agent runtime or adapter
-- does the design use `agentic-payment-skills` / `clink-payment-skill` as the generic agent payment skill
-- does the design align exact CLI flags, exit-code handling, refund behavior, and payment-method freshness rules with the loaded `agentic-payment-skills` context
-- does the merchant skill or adapter call, handle, and resume according to the loaded `agentic-payment-skills` / `clink-payment-skill` contract without assuming OpenClaw runtime behavior
-- does it account for `clink-cli` JSON output and exit code handling
-- does it require Node.js >= 20 and `clink-cli` installation before payment operations
-- does it avoid automatic `wallet init` during payment and handle exit code `3` or `4` as setup/auth recovery
-- does it require payment-method freshness through `card binding-link` instead of trusting `card list` cache alone
-- does it prevent `customerApiKey` exposure and require `CLINK_CUSTOMER_API_KEY` piping for customer API key configuration
-- does it use `--dry-run` for preview or input verification requests
-- does it define `clink-cli pay` status handling for status `1`, status `3`, status `4`, and status `6`
-- does it require explicit refund request and original `orderId` for refund submission
+- does the design use the `clink-payment` skill and the `clink` MCP server as the generic agent payment layer
+- does the design read `clink://skill/rules` once per session before any workflow beyond pure Catalog reads, and treat the server rules as authoritative over any local skill text
+- does the design align exact MCP tool names, `next_action` handling, refund behavior, and payment-method freshness rules with the loaded MCP payment contract
+- does the merchant skill or adapter call, handle, and resume according to the loaded `clink-payment` MCP contract without assuming OpenClaw runtime behavior
+- does it branch only on the closed `next_action` type set and handle `PROVIDE_INPUT`, `CONFIRM`, `REDIRECT_USER`, `SETUP_REQUIRED`, `POLL_OPERATION`, `WAIT_OPERATION`, and `CONTACT_SUPPORT`
+- does it present the frozen `CONFIRM` summary verbatim before exactly one `execute_payment` call per intent
+- does it require payment-method freshness through `get_account_state` instead of trusting a cached payment-method list
+- does it route payment-method setup, replacement, default selection, and removal through `start_payment_method_action`, then re-read `get_account_state`
+- does it use `prepare_payment` in direct or session mode, and never send an amount in session mode
+- does it require `list_spendable_instructions` and an `ACTIVE` instruction before spending that needs pre-authorization
+- does it use `get_operation` as the only recovery path after a timeout, restart, or missed notification
+- does it treat an Operation-recovery timeout as unknown rather than failed and avoid retrying execution
+- does it require an explicit refund request and the original order id, then follow `start_refund` → `CONFIRM` → `execute_refund` and read `get_refund` for the authoritative provider state
+- does the design bind one payment, checkout, refund, or instruction goal to exactly one execution owner (`legacy_cli` or `mcp`) before the first mutation and keep that binding until the goal is terminal
+- does it prevent retrying across stacks after a timeout, transport failure, unknown result, or OAuth step-up, and never move an in-flight attempt between stacks
 - does it define the agent runtime contract instead of assuming OpenClaw-specific session, memory, tool, or resume behavior
 - does it clarify session mode, direct mode, or adapter mode
 - does it support merchant `402 Payment Required` handoff when the merchant uses that protocol
 - does a merchant-originated payment handoff include structured `payment_required` data, exact payment parameters, correlation data, and a retry or resume target
-- does it define how the generic agent invokes `clink-payment-skill` or the adapter around it
+- does it define how the generic agent invokes the `clink` MCP server or the adapter around it
 - does it prevent invented payment parameters and require explicit authorization before charge execution
 - does it define the payment handoff contract and preserve it as structured data
 - does it include merchant confirmation ownership and exactly-once or idempotent confirmation behavior
 - does it define callback, polling, queue, or recovery behavior for asynchronous payment completion
 - does it define task resume behavior after merchant confirmation
-- does it separate merchant skill or tool, agent runtime, adapter, merchant server, `agentic-payment-skills`, webhook handler, notification sender, and recovery ownership
+- does it separate merchant skill or tool, agent runtime, adapter, merchant server, the `clink` MCP server, webhook handler, notification sender, and recovery ownership
 - does it include `customer.verify` handling when email verification is in scope
 
 ## Documentation Checks

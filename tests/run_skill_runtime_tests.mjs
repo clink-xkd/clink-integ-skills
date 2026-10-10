@@ -294,6 +294,34 @@ async function main() {
   check(genericAgent.route === "merchant_agent_integration", "generic agentic payment prompt should route to merchant_agent_integration");
   check(genericAgent.artifacts.some((item) => item.name === "payment_handoff_contract"), "generic agentic payment prompt should emit payment_handoff_contract");
   check(genericAgent.artifacts.some((item) => item.name === "ownership_matrix"), "generic agentic payment prompt should emit ownership_matrix");
+  check(
+    genericAgent.notes.every((item) => !item.includes("load_payment_skill_contexts")),
+    "legacy CLI payment prompts must not recommend the retired CLI context loader"
+  );
+
+  const genericAgentMcp = await runSkillRuntime({
+    prompt: "Design a generic agent integration where the agent runtime pays through the Clink MCP server, reading clink://skill/rules and using prepare_payment, execute_payment, and get_operation.",
+    docsFallbackSource: docsFallback,
+  });
+  check(genericAgentMcp.route === "merchant_agent_integration", "Clink MCP payment prompt should route to merchant_agent_integration");
+  check(
+    genericAgentMcp.artifacts.some((item) => item.name === "payment_handoff_contract"),
+    "Clink MCP payment prompt should emit payment_handoff_contract"
+  );
+  check(
+    genericAgentMcp.artifacts.some((item) => item.name === "ownership_matrix"),
+    "Clink MCP payment prompt should emit ownership_matrix"
+  );
+
+  const openClawMcp = await runSkillRuntime({
+    prompt: "Design an OpenClaw merchant skill that hands payment to the Clink MCP server over a merchant session and resumes the task after customer.verify.",
+    docsFallbackSource: docsFallback,
+  });
+  check(openClawMcp.route === "merchant_agent_integration", "OpenClaw merchant skill prompt over Clink MCP should route to merchant_agent_integration");
+  check(
+    openClawMcp.artifacts.some((item) => item.name === "payment_handoff_contract"),
+    "OpenClaw Clink MCP prompt should emit payment_handoff_contract"
+  );
 
   const dashboardFallbackReview = await runSkillRuntime({
     prompt: "Review this webhook setup: we will copy the signing key from Merchant Dashboard > Developers > Webhooks.",

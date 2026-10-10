@@ -198,8 +198,8 @@ Do not treat `merchantReferenceId` as an idempotency key.
 After onboarding, route the user to the right implementation path:
 
 - standard integration for checkout, webhook, order sync, subscriptions, customer portal, and refund lifecycle
-- merchant skill for generic agent integration when a non-OpenClaw agent runtime uses `agentic-payment-skills`
-- merchant skill for OpenClaw integration when an OpenClaw merchant skill uses `openclaw-payment-skills`
+- merchant skill for generic agent integration when a non-OpenClaw agent runtime uses the `clink-payment` skill and the `clink` MCP server
+- merchant skill for OpenClaw integration when an OpenClaw merchant skill uses the `clink-payment` MCP payment contract
 - integration validation when the user asks for readiness, production promotion, or launch checks
 
 ## Output Expectations
