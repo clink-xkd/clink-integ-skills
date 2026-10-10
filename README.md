@@ -2,11 +2,43 @@
 
 English | [简体中文](README-zh.md)
 
-`clink-integ-skills` is a Codex-compatible skill for helping coding agents integrate ClinkBill payments. It covers the merchant-side offline CLI and Secret Key API path, plus the agent-facing Clink MCP path for UCP Checkout, Wallet, Browser Pay, OAuth/PKCE, and Operation recovery.
+`clink-integ-skills` is a Codex-compatible skill for helping coding agents integrate ClinkBill payments. It covers two layers with two different mechanisms:
+
+| Layer | What it does | Mechanism |
+|---|---|---|
+| Merchant integration | The merchant's own backend accepts payments: Secret Key, product catalog import, checkout and subscription sessions, webhook endpoints and signature verification, sandbox validation | The bundled offline `clink-integ-cli` plus the documented Clink REST API and JavaScript SDK |
+| Agent payment capability | A merchant skill gives the end user's agent the ability to pay, refund, or set up a wallet | The Clink MCP server only |
+
+The payment layer is MCP-only. There is no payment CLI to install, no process exit code to interpret, and no customer API key to hold: an agent runtime connects the `clink` MCP server and pays through its tools. `references/clink-mcp-payment-skill.md` is the contract for that layer.
 
 Use the parent `agent-prompts` repository as the distribution package. This folder is the installable skill, and the parent repository also contains short prompts to give to agents. The agent-facing default prompt is in `agents/openai.yaml`, and longer Chinese prompt references are in `references/agent-prompt.zh-CN.md` and `references/universal-agent-prompt.zh-CN.md`.
 
-## Current Integration Model
+## Agent Payment Capability: Clink MCP Only
+
+The canonical protected resource is one MCP endpoint per environment, and it exposes the Catalog, UCP Commerce, Clink account/payment, and Skill Marketplace tool sets together:
+
+| User-facing environment | MCP edition | Exact endpoint (also the OAuth resource and audience) |
+|---|---|---|
+| sandbox | test | `https://api.clinkbill.dev/mcp` |
+| internal UAT | uat | `https://uat-api.clinkbill.com/mcp` |
+| production | production | `https://api.clinkbill.com/mcp` |
+
+- The Host configures exactly one `clink` MCP connection, using streamable HTTP with no API key or bearer token in configuration.
+- The installed skill is named `clink-payment` and must be installed under its own `clink-payment/` directory.
+- The authoritative operating ruleset is the server resource `clink://skill/rules`, or `get_skill_manifest` with `include_rules: true` when the Host cannot read MCP resources. Server rules supersede any locally installed skill text, so a server deploy updates behaviour without reinstalling the skill.
+- Every Operation carries one `next_action`, whose `type` is a closed set: `PROVIDE_INPUT`, `CONFIRM`, `REDIRECT_USER`, `SETUP_REQUIRED`, `POLL_OPERATION`, `WAIT_OPERATION`, `CONTACT_SUPPORT`. Absence of `next_action` means the Operation is terminal.
+- Paying is `prepare_payment` in `direct` or `session` mode followed by a user-approved `CONFIRM` and one `execute_payment`. Refunds follow `start_refund` → `CONFIRM` → `execute_refund`, then `get_refund`.
+- `get_operation` is the only recovery path after a timeout or restart, and a timeout means the state is unknown rather than failed. One goal keeps exactly one in-flight Operation.
+
+Local design aid for that layer:
+
+```bash
+node scripts/load_mcp_skill_context.mjs --print-path
+```
+
+It resolves in priority order `CLINK_MCP_RULES_PATH` (an exported snapshot of `clink://skill/rules`), then `CLINK_MCP_SKILL_PATH` (a local `clink-payment/SKILL.md`), then the vendored `references/clink-mcp-payment-skill.md`. It is a design aid, never the runtime authority.
+
+## Current Merchant Integration Model
 
 Normal integration no longer needs a Dashboard Console token after the Secret Key is configured.
 
@@ -81,8 +113,8 @@ The default local Merchant Webhook fixture uses an `event_` ID, `object: "event"
 - webhook endpoint automation with `clink webhook endpoint ensure`
 - raw-body webhook signature verification, `merchantReferenceId` + `sessionId` order matching, idempotency, retry safety, and out-of-order handling
 - Elements embedded checkout guidance through `@clink-ai/clink-elements`
-- generic agent and OpenClaw merchant skill payment handoff design
-- Clink MCP integration for UCP, Wallet, Browser Pay, OAuth/PKCE, purchase instructions, and same-Operation recovery
+- agent payment capability through the Clink MCP server: `clink` connection setup, `clink://skill/rules`, the closed `next_action` set, purchase instructions, direct and session payment, refunds, and Operation recovery
+- generic agent and OpenClaw merchant skill payment handoff design over the Clink MCP server
 - review, validation, and developer-facing checklist generation
 
 The agent discovers product data from the merchant project. The CLI validates, plans, imports, and manages Clink-side resources.
@@ -92,7 +124,7 @@ The agent discovers product data from the merchant project. The CLI validates, p
 Use this concise prompt when handing a project to an agent:
 
 ```text
-Use $clink-integ-skills to integrate ClinkBill payments into this project with the merchant CLI/Secret Key path or Clink MCP, covering checkout, payment, subscription, refund, webhook, UCP, Wallet, Browser Pay, and sandbox validation as applicable.
+Use $clink-integ-skills to integrate ClinkBill payments into this project with clink-integ-cli, Secret Key setup, product catalog import, checkout/subscription APIs, webhook endpoint automation, and sandbox validation. For any agent-side payment capability, connect the Clink MCP server and follow clink://skill/rules.
 ```
 
 The skill itself tells the agent which references to read for standard integration, onboarding, validation, Elements, generic agent payment skills, and OpenClaw payment skills.
@@ -121,9 +153,11 @@ No runtime dependency install is required for the skill itself.
 |---|---|
 | `SKILL.md` | Main routing rules and hard constraints |
 | `agents/openai.yaml` | Agent UI metadata and default prompt |
-| `references/clink-integ-cli-integration.md` | CLI-first Secret Key, catalog, checkout, webhook, and sandbox workflow |
+| `references/clink-integ-cli-integration.md` | Merchant-side Secret Key, catalog, checkout, webhook, and sandbox workflow |
 | `references/standard-integration.md` | Standard Clink integration workflow |
-| `references/mcp-agent-integration.md` | MCP OAuth, UCP Checkout, Wallet, Browser Pay, and Operation recovery |
+| `references/clink-mcp-payment-skill.md` | The Clink MCP payment contract that this skill is built on |
+| `references/agent-integration.md` | OpenClaw merchant skill integration over the Clink MCP server |
+| `references/generic-agent-integration.md` | Generic (non-OpenClaw) agent runtime integration over the Clink MCP server |
 | `references/new-user-onboarding.md` | New user onboarding and first sandbox checkout workflow |
 | `references/agent-prompt.zh-CN.md` | Chinese agent prompt reference |
 | `references/universal-agent-prompt.zh-CN.md` | Universal Chinese agent prompt reference |
@@ -143,6 +177,7 @@ npm run test:runtime
 npm run test:contracts
 node scripts/run_skill_runtime.mjs --prompt "Integrate Clink checkout and webhooks" --json
 node scripts/generate_guidance_artifacts.mjs --prompt "Design a Clink webhook integration"
+node scripts/load_mcp_skill_context.mjs --print-path
 ```
 
 For doc-dependent maintenance, use the built-in docs gate:
@@ -156,8 +191,8 @@ It uses the official Clink docs export at `https://docs.clinkbill.com/llms-full.
 ## Compatibility
 
 - Codex-style modular skills
-- OpenClaw merchant skill flows
-- Generic agent payment skill flows
+- OpenClaw merchant skill flows over the Clink MCP server
+- Generic agent runtime flows over the Clink MCP server
 
 ## License
 

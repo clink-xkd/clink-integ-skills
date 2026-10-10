@@ -11,13 +11,13 @@ It also covers merchant-originated payment handoff: a merchant API or merchant t
 This path is different from:
 
 - standard integration, where the merchant backend creates checkout sessions directly and owns the browser payment entry
-- merchant skill for OpenClaw integration, where OpenClaw skills use `openclaw-payment-skills` and share known skill and runtime conventions
+- merchant skill for OpenClaw integration, where a merchant's OpenClaw agent follows the OpenClaw runtime conventions in `references/agent-integration.md`
 
 The generic agent side does not assume OpenClaw-specific session state, tool names, memory layout, notification channels, or resume behavior. Those details must be defined by the integrator, while the payment layer follows the Clink MCP contract in `references/clink-mcp-payment-skill.md`.
 
 ## Payment Layer: Clink MCP Server
 
-The payment layer of this path is the Clink MCP server. It replaces the legacy local stack an agent runtime previously needed: the `agentic-payment-skills` package, its `clink-payment-skill` skill name, and the `clink-cli` command-line wallet entry point. Do not design new generic-agent integrations against that legacy stack.
+The payment layer of this path is the Clink MCP server. There is no local CLI payment stack to install, no process exit code to interpret, and no customer API key to hold: the agent runtime connects the `clink` MCP server and pays through its tools.
 
 `references/clink-mcp-payment-skill.md` is the single source of truth for the payment layer. This document describes how a merchant-side generic-agent integration is designed; it does not restate the payment rules, authorization semantics, or tool behavior that belong there.
 
@@ -107,15 +107,14 @@ Every Operation envelope carries an identifier, kind, status, revision, and mess
 
 Branch only on the type. The set is closed, and the accompanying parameters carry data only; they never name a tool or a step. Absence of `next_action` means the Operation is terminal, and there is no `NONE` sentinel.
 
-### Recovery And Stack Ownership
+### Recovery And Attempt Ownership
 
 - `get_operation` is the only recovery path after a timeout, restart, or missed notification; it is always safe and never moves money
 - a recovery timeout means the payment state is unknown, not failed; tell the user plainly what is known and unknown
-- the legacy `agentic-payment-skills` / `clink-cli` stack and the Clink MCP server may be installed side by side, but they are independent execution stacks
-- before the first mutation for one payment, checkout, refund, or instruction goal, the Host binds that goal to exactly one owner, `legacy_cli` or `mcp`, and keeps that binding until the goal is terminal
-- a timeout, transport failure, unknown result, or OAuth step-up never authorizes a retry through the other stack, and an in-flight attempt never moves between stacks
-- one resource has one watcher; do not run a legacy watch while the matching Clink MCP Operation is open
-- a Host that cannot enforce goal-scoped ownership must expose only one execution stack per session
+- one goal has exactly one in-flight Operation: never run a second prepare or execute for the same payment, checkout, refund, or instruction goal while one is non-terminal
+- a timeout, transport failure, unknown result, or OAuth step-up never authorizes a retry of the execution; recover the existing Operation instead
+- one resource has one watcher; do not run a separate external watch for a resource whose Clink MCP Operation is open
+- a Host that cannot keep one goal on one Operation must serialize its own calls per goal
 
 ## Main Responsibilities
 
@@ -164,7 +163,7 @@ A merchant skill for generic agent integration must define the runtime contract 
 At minimum, document:
 
 - how the agent runtime connects the `clink` MCP server per environment and where it reads `clink://skill/rules`
-- how the goal's execution owner is bound to `legacy_cli` or `mcp` and how the runtime prevents cross-stack retry
+- how the runtime keeps one goal on one in-flight Operation and prevents a competing retry
 - how payment state is represented inside the agent runtime
 - where pending task state is stored
 - how `CONFIRM` summaries, redirect steps, refunds, and payment handoff data are delivered back to the agent or merchant server
@@ -288,7 +287,7 @@ Do not send duplicate merchant success or failure notifications if the merchant 
 2. agent runtime stores pending task and correlation context
 3. merchant server creates or validates a payment session or payment intent
 4. agent runtime or adapter reads `clink://skill/rules` if this is the first payment workflow in the session
-5. agent runtime or adapter checks the goal's execution owner and payment readiness, then invokes `prepare_payment` with explicit payment context
+5. agent runtime or adapter checks payment readiness, then invokes `prepare_payment` with explicit payment context
 6. the runtime shows every `CONFIRM` summary verbatim and asks for explicit authorization of the exact charge
 7. `execute_payment` runs once with the frozen operation, action, and revision
 8. the runtime reads the terminal Operation, then the agent runtime, adapter, or merchant server calls the merchant confirmation path
@@ -315,12 +314,11 @@ This path should clearly separate ownership between:
 - adapter layer, when present
 - merchant server
 - the Clink MCP server
-- the legacy `agentic-payment-skills` / `clink-payment-skill` stack, only for a goal already bound to `legacy_cli`
 - webhook handler
 - notification sender
 - recovery and resume logic
 
-Payment-layer execution belongs to the Clink MCP server for a goal whose owner is `mcp`, and to the legacy stack only for a goal bound to `legacy_cli`. One goal never uses both.
+Payment-layer execution belongs to the Clink MCP server. One goal has exactly one in-flight Operation and never a second execution attempt.
 
 Merchant-layer success or failure belongs to the merchant confirmation path.
 
@@ -335,7 +333,7 @@ A good merchant skill for generic agent integration output should usually includ
 - runtime contract assumptions
 - Clink MCP connection and dependency checklist
 - where `clink://skill/rules` is read, and why local skill text is never authoritative
-- the goal-scoped `legacy_cli` versus `mcp` ownership rule and how the Host enforces it
+- the one-goal-one-Operation rule and how the runtime enforces it
 - session mode, direct mode, adapter mode, or merchant 402 handoff mode selection
 - merchant `402 Payment Required` handoff handling when the merchant uses that protocol
 - merchant skill or merchant tool responsibility checklist
@@ -345,6 +343,5 @@ A good merchant skill for generic agent integration output should usually includ
 - callback and resume design
 - idempotency and duplicate-delivery rules
 - `customer.verify` handling when email verification is in scope
-- the recovery path after a timeout or unknown result, without cross-stack retry
-- the legacy `clink-cli` migration mapping when the design was originally written against the CLI
+- the recovery path after a timeout or unknown result, without a competing retry
 - ownership matrix across merchant skill or merchant tool, agent runtime, adapter, merchant server, and the Clink MCP server

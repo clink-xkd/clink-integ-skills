@@ -82,8 +82,6 @@ const moduleExpectations = [
       "new user onboarding",
       "merchant skill for generic agent integration",
       "merchant skill for OpenClaw integration",
-      "openclaw-payment-skills",
-      "agentic-payment-skills",
       "Clink documentation-backed guidance",
       "Integration Validation",
       "merchantReferenceId",
@@ -100,10 +98,64 @@ const moduleExpectations = [
       "presetOptions",
       "references/clink-mcp-payment-skill.md",
       "clink://skill/rules",
-      "legacy_cli",
       "guidance artifacts",
       "sandbox",
       "production"
+    ],
+    notContains: [
+      "openclaw-payment-skills",
+      "agentic-payment-skills",
+      "clink-payment-skill",
+      "clink-cli",
+      "legacy_cli",
+      "customerApiKey",
+      "CLINK_CUSTOMER_API_KEY"
+    ]
+  },
+  {
+    file: "README.md",
+    contains: [
+      "Clink MCP",
+      "clink-integ-cli",
+      "clink://skill/rules",
+      "clink-payment",
+      "next_action",
+      "prepare_payment",
+      "execute_payment",
+      "get_operation",
+      "https://api.clinkbill.com/mcp",
+      "https://api.clinkbill.dev/mcp"
+    ],
+    notContains: [
+      "agentic-payment-skills",
+      "openclaw-payment-skills",
+      "clink-payment-skill",
+      "clink-cli",
+      "legacy_cli",
+      "customerApiKey"
+    ]
+  },
+  {
+    file: "README-zh.md",
+    contains: [
+      "Clink MCP",
+      "clink-integ-cli",
+      "clink://skill/rules",
+      "clink-payment",
+      "next_action",
+      "prepare_payment",
+      "execute_payment",
+      "get_operation",
+      "https://api.clinkbill.com/mcp",
+      "https://api.clinkbill.dev/mcp"
+    ],
+    notContains: [
+      "agentic-payment-skills",
+      "openclaw-payment-skills",
+      "clink-payment-skill",
+      "clink-cli",
+      "legacy_cli",
+      "customerApiKey"
     ]
   },
   {
@@ -251,13 +303,17 @@ const moduleExpectations = [
       "POLL_OPERATION",
       "WAIT_OPERATION",
       "CONTACT_SUPPORT",
+      "operationId",
+      "actionId",
+      "expectedRevision"
+    ],
+    notContains: [
       "legacy_cli",
       "agentic-payment-skills",
       "clink-payment-skill",
       "clink-cli",
-      "operationId",
-      "actionId",
-      "expectedRevision"
+      "customerApiKey",
+      "CLINK_CUSTOMER_API_KEY"
     ]
   },
   {
@@ -281,7 +337,8 @@ const moduleExpectations = [
       "clink://skill/rules",
       "OpenClaw agent review",
       "generic agent review"
-    ]
+    ],
+    notContains: ["codeload.github.com", "clink-cli", "CLINK_AGENTIC_PAYMENT_SKILLS_URL", "CLINK_OPENCLAW_PAYMENT_SKILLS_URL"]
   },
   {
     file: "references/new-user-onboarding.md",
@@ -394,8 +451,6 @@ const moduleExpectations = [
       "Clink MCP",
       "references/clink-mcp-payment-skill.md",
       "clink://skill/rules",
-      "legacy_cli",
-      "openclaw-payment-skills",
       "OpenClaw-native",
       "Session Mode",
       "Direct Mode",
@@ -409,7 +464,8 @@ const moduleExpectations = [
       "confirm_tool",
       "confirm_args",
       "resume"
-    ]
+    ],
+    notContains: ["openclaw-payment-skills", "legacy_cli", "exit code", "customerApiKey"]
   },
   {
     file: "references/generic-agent-integration.md",
@@ -419,10 +475,6 @@ const moduleExpectations = [
       "Clink MCP",
       "references/clink-mcp-payment-skill.md",
       "clink://skill/rules",
-      "legacy_cli",
-      "agentic-payment-skills",
-      "clink-payment-skill",
-      "clink-cli",
       "agent runtime",
       "Merchant Skill / Merchant Tool",
       "merchant skill or merchant tool",
@@ -443,6 +495,15 @@ const moduleExpectations = [
       "callback",
       "idempotency",
       "resume"
+    ],
+    notContains: [
+      "agentic-payment-skills",
+      "clink-payment-skill",
+      "clink-cli",
+      "legacy_cli",
+      "customerApiKey",
+      "CLINK_CUSTOMER_API_KEY",
+      "npm install -g @clink-ai/clink-cli"
     ]
   },
   {
@@ -459,7 +520,6 @@ const moduleExpectations = [
       "execute_payment",
       "next_action",
       "get_operation",
-      "legacy_cli",
       "refund",
       "load_mcp_skill_context",
       "Merchant Dashboard > Developers > API Keys",
@@ -471,7 +531,8 @@ const moduleExpectations = [
       "submit-visible",
       "amount-change",
       "destroy()"
-    ]
+    ],
+    notContains: ["clink-cli", "legacy_cli", "customerApiKey", "card binding-link"]
   },
   {
     file: "references/validation-workflow.md",

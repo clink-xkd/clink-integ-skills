@@ -288,15 +288,15 @@ async function main() {
   checkEndpointEnsureEvents(productionCompatibility, "commerce", "production subscription with backward compatibility");
 
   const genericAgent = await runSkillRuntime({
-    prompt: "Design a generic non-OpenClaw agent integration using agentic-payment-skills, clink-payment-skill, and clink-cli.",
+    prompt: "Design a generic non-OpenClaw agent integration where the merchant skill hands payment to the agent runtime through the clink-payment skill and Clink MCP, with an adapter and a payment handoff contract.",
     docsFallbackSource: docsFallback,
   });
-  check(genericAgent.route === "merchant_agent_integration", "generic agentic payment prompt should route to merchant_agent_integration");
-  check(genericAgent.artifacts.some((item) => item.name === "payment_handoff_contract"), "generic agentic payment prompt should emit payment_handoff_contract");
-  check(genericAgent.artifacts.some((item) => item.name === "ownership_matrix"), "generic agentic payment prompt should emit ownership_matrix");
+  check(genericAgent.route === "merchant_agent_integration", "generic agent payment prompt should route to merchant_agent_integration");
+  check(genericAgent.artifacts.some((item) => item.name === "payment_handoff_contract"), "generic agent payment prompt should emit payment_handoff_contract");
+  check(genericAgent.artifacts.some((item) => item.name === "ownership_matrix"), "generic agent payment prompt should emit ownership_matrix");
   check(
     genericAgent.notes.every((item) => !item.includes("load_payment_skill_contexts")),
-    "legacy CLI payment prompts must not recommend the retired CLI context loader"
+    "agent payment prompts must not recommend the retired CLI context loader"
   );
 
   const genericAgentMcp = await runSkillRuntime({

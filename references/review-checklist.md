@@ -140,8 +140,8 @@ This file is for final review and self-check. It is not the primary workflow doc
 - does it use `get_operation` as the only recovery path after a timeout, restart, or missed notification
 - does it treat an Operation-recovery timeout as unknown rather than failed and avoid retrying execution
 - does it require an explicit refund request and the original order id, then follow `start_refund` → `CONFIRM` → `execute_refund` and read `get_refund` for the authoritative provider state
-- does the design bind one payment, checkout, refund, or instruction goal to exactly one execution owner (`legacy_cli` or `mcp`) before the first mutation and keep that binding until the goal is terminal
-- does it prevent retrying across stacks after a timeout, transport failure, unknown result, or OAuth step-up, and never move an in-flight attempt between stacks
+- does the design keep one payment, checkout, refund, or instruction goal on exactly one in-flight Operation, with no second prepare or execute while it is non-terminal
+- does it prevent retrying execution after a timeout, transport failure, unknown result, or OAuth step-up, and recover the existing Operation instead
 - does it define the agent runtime contract instead of assuming OpenClaw-specific session, memory, tool, or resume behavior
 - does it clarify session mode, direct mode, or adapter mode
 - does it support merchant `402 Payment Required` handoff when the merchant uses that protocol

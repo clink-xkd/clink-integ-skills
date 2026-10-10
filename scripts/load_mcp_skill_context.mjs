@@ -14,9 +14,6 @@ import { fileURLToPath } from "url";
  *   1. `CLINK_MCP_RULES_PATH` — an operator-exported snapshot of `clink://skill/rules`.
  *   2. `CLINK_MCP_SKILL_PATH` — a local copy of the Host-installed `clink-payment/SKILL.md`.
  *   3. the vendored `references/clink-mcp-payment-skill.md` contract fallback.
- *
- * The previous CLI loader downloaded `agentic-payment-skills` and `openclaw-payment-skills` zips
- * from GitHub codeload. Those are the legacy CLI payment stacks and are no longer a dependency.
  */
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -141,7 +138,7 @@ function selectSource() {
       validateSkillName: false,
     }) ||
     loadSnapshotSource({
-      id: "clink-payment-skill",
+      id: "clink-payment-md",
       label: "clink-payment SKILL.md",
       filePath: skillPath,
       validateSkillName: true,

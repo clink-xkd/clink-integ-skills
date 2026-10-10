@@ -96,7 +96,6 @@ Use this path when the user wants help with:
 - auto top-up or recharge recovery
 - merchant confirmation flows
 - `customer.verify` webhook handling
-- migration off the legacy `openclaw-payment-skills` CLI distribution
 
 Read:
 
@@ -123,7 +122,6 @@ Use this path when the user wants help with:
 - callback, polling, queue, or recovery design for payment completion
 - agent task resume behavior after merchant confirmation
 - generic payment handoff contracts
-- migration off the legacy `agentic-payment-skills` / `clink-payment-skill` / `clink-cli` stack
 
 Read:
 
@@ -222,11 +220,12 @@ After drafting the answer, review it with:
 - running `node scripts/load_mcp_skill_context.mjs` means: load a local Clink MCP payment context snapshot into this skill's `.cache/mcp-skill-context` in priority order (`CLINK_MCP_RULES_PATH`, then `CLINK_MCP_SKILL_PATH`, then the vendored `references/clink-mcp-payment-skill.md`), never mutate the `clink-mcp-service` repository, and treat the local context as a design aid rather than the runtime authority
 - require generated MCP payment code to branch only on the closed `next_action.type` set, to treat a missing `next_action` as a terminal Operation, and to recover an unknown result only through `get_operation`
 - require generated MCP payment code to submit an execute call at most once per frozen `CONFIRM`, using only its `operationId`, `actionId`, and `expectedRevision`
-- require one goal to bind to exactly one execution owner (`legacy_cli` or `mcp`) before its first mutation, and never let a timeout, transport failure, unknown result, or OAuth step-up authorize a retry through the other stack
-- never overwrite the legacy `agentic-payment-skills` / `clink-payment-skill` package directory when installing the `clink-payment` MCP skill
+- require one goal to keep exactly one in-flight Operation, and never let a timeout, transport failure, unknown result, or OAuth step-up authorize a second prepare or execute for that goal
+- never overwrite another installed payment skill's package directory when installing the `clink-payment` MCP skill; install it under its own `clink-payment/` directory
+- do not describe any command-line payment tool, process exit code, or customer API key as the payment capability; payments go exclusively through the Clink MCP tools
 - running `node scripts/load_official_docs.mjs` means: use cache if it is within 7 days, refresh only if missing or older than 7 days, and fall back to stale cache only when refresh fails
 - do not mix standard integration, merchant skill for generic agent integration, and merchant skill for OpenClaw integration unless the user explicitly wants multiple paths
-- do not describe the legacy `agentic-payment-skills` / `openclaw-payment-skills` CLI packages as the current payment capability, and do not carry their exit-code or `customerApiKey` contract into new MCP-based guidance
+- do not describe a command-line payment tool, its exit-code contract, or a customer API key as the payment capability in any merchant skill guidance
 - do not treat `merchantReferenceId` as an idempotency key
 - do not pass an absolute URL, scheme-relative URL, backslash path, parent path, or other origin/base-path escape to authenticated `clink api request`; it accepts only relative API paths below the configured base
 - do not leave Secret-bearing CLI profiles or `.env` files broader than mode `0600` on POSIX systems

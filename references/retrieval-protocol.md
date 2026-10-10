@@ -58,7 +58,7 @@ When the Host has the `clink` MCP connection, the authoritative payment rules ar
 
 If the command reports a fallback warning, state that the MCP payment contract context is not confirmed latest before relying on exact tool names, `next_action` handling, message-routing directives, or ownership rules.
 
-Review the merchant skill against the loaded MCP payment contract for correctness and completeness. For OpenClaw, verify the merchant skill integrates with its OpenClaw runtime contracts. For generic agent integration, verify the merchant skill or adapter integrates with the `clink-payment` skill and the `clink` MCP server contracts instead of the legacy `clink-cli` stack.
+Review the merchant skill against the loaded MCP payment contract for correctness and completeness. For OpenClaw, verify the merchant skill integrates with its OpenClaw runtime contracts. For generic agent integration, verify the merchant skill or adapter integrates with the `clink-payment` skill and the `clink` MCP server contracts.
 
 If the user explicitly asks to refresh or update the docs, run:
 

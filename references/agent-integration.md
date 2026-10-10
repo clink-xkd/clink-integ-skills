@@ -29,7 +29,7 @@ The payment-layer contract is not restated here. `references/clink-mcp-payment-s
 - internal UAT -> `https://uat-api.clinkbill.com/mcp`
 - production -> `https://api.clinkbill.com/mcp`
 - the MCP payment skill is named `clink-payment`
-- `openclaw-payment-skills` is the legacy CLI distribution; the MCP skill and that legacy package may be co-installed, but a single goal must bind to exactly one execution owner (`legacy_cli` or `mcp`) and keep that binding until the goal is terminal
+- the OpenClaw agent runtime pays only through these MCP tools; it does not shell out to a payment CLI and does not hold a customer API key
 
 Before the first Clink call in a goal, verify the effective `clink` connection URL against the environment resolved for that goal. Never silently switch environments and never create a second `clink` entry.
 
@@ -151,8 +151,8 @@ For the payment layer:
 
 - `get_operation` is the only recovery path after a timeout, restart, or missed notification; it is read-only and never moves money
 - a payment-layer timeout means the state is unknown, not failed; tell the user plainly what is known and unknown
-- never retry an execute call to check whether it worked, and never resume the same goal through the other execution stack
-- the legacy `openclaw-payment-skills` CLI stack and the Clink MCP stack may be co-installed but must never be mixed for one goal
+- never retry an execute call to check whether it worked; recover the existing Operation with `get_operation` instead
+- one goal has exactly one in-flight Operation; never start a competing attempt after an unknown result
 
 In some implementations, a later payment webhook wake may carry only order/session identifiers. The merchant integration should define how that wake maps back to the pending task and confirmation path.
 
@@ -188,7 +188,7 @@ A good merchant skill for OpenClaw integration output should usually include:
 - merchant server responsibilities
 - the resolved environment, its exact MCP endpoint, and the `clink` connection name
 - session mode vs direct mode selection, and the exact `prepare_payment` mode value
-- the goal-scoped execution-owner rule (`legacy_cli` or `mcp`) and how the Host enforces it
+- the one-goal-one-Operation rule and how the runtime enforces it
 - where `clink://skill/rules` is read and why local text is never authoritative
 - developer-ready artifacts such as handoff contract skeleton, confirmation checklist, and recovery notes
 - payment handoff contract

@@ -3,8 +3,8 @@
 ## Definition
 
 The Clink MCP payment skill is the Clink payment capability an agent runtime gains by connecting the
-Clink MCP server. It is the current replacement for the legacy `agentic-payment-skills` /
-`clink-payment-skill` package, which executed payments through the `clink-cli` command-line wallet.
+Clink MCP server. It is the only payment capability this skill supports: payments, refunds, wallet
+reads, and purchase instructions all go through the Clink MCP tools described here.
 
 Use this module whenever a merchant skill, merchant tool, or merchant-facing capability needs to
 hand a payment, recharge, refund, or wallet set-up step to the agent runtime the end user is running.
@@ -41,15 +41,13 @@ before calling Clink. Never silently switch environments, and never create a sec
   protected-resource identifier above, and the token audience must equal that same URL.
 - Installing the skill is a Host-local filesystem and skill-registry action. The remote server has no
   remote-install tool by design. Install the public file under its own `clink-payment/` skill
-  directory and never overwrite the legacy `agentic-payment-skills/` package directory: its
-  frontmatter name is `clink-payment-skill`, while the new skill is `clink-payment`.
+  directory, keeping the published frontmatter name `clink-payment`.
 - A configured URL plus an enabled entry does not prove authentication. If a newly added entry
   already started OAuth, let that same flow finish and read its result; do not start a second login
   concurrently.
 - A localhost callback page showing `code` or `state` only proves the callback reached the local
-  listener. Authentication is established by the Host's explicit authentication status, or by a CLI
-  flow's exit code `0` with explicit success output. Never automate the user's browser consent and
-  never inspect credential storage to infer success.
+  listener. Authentication is established by the Host's explicit authentication status. Never
+  automate the user's browser consent and never inspect credential storage to infer success.
 
 ## Server-authoritative rules
 
@@ -126,30 +124,24 @@ Rules that make this safe:
   is outside the closed set, a required `params` field is missing, `expires_at` has passed, or
   `expected_revision` differs from the last read revision.
 
-## Replacements for the legacy CLI result contract
+## Outcome and recovery contract
 
-The legacy `clink-cli` path reported outcomes through process exit codes and JSON status values.
-Those do not exist over MCP; the equivalent decision inputs are the Operation envelope and the
-`next_action` type.
+MCP does not report outcomes through process exit codes or JSON status values. The only decision
+inputs are the Operation envelope and its `next_action`:
 
-| Legacy `clink-cli` signal | MCP replacement |
-| --- | --- |
-| `wallet status` | `get_account_state` |
-| `wallet init` | `start_payment_method_action` (`add`) with its `REDIRECT_USER`, then re-read `get_account_state` |
-| `card binding-link` / `card list` | `start_payment_method_action` for changes; `get_account_state` for a fresh, authoritative read |
-| `pay` in direct mode | `prepare_payment` with `mode: "direct"`, then `execute_payment` |
-| `pay` in session mode | `prepare_payment` with `mode: "session"`, then `execute_payment` |
-| `refund create` | `start_refund`, then `execute_refund` |
-| `refund get` | `get_refund` |
-| risk-rule read and link | `get_risk_rules` and `start_risk_rules_action` |
-| exit `0` / status `1` (paid) | Operation reaches a terminal `SUCCEEDED` state |
-| exit `3` (declined) or `4` (risk blocked) | The returned refusal or `next_action`; read the same Operation |
-| exit `6` (network error or ambiguous timeout) | `get_operation`; the state is unknown, not failed |
-| exit `7` (3DS required) | A `REDIRECT_USER` action whose `redirect_kind` names the required human step |
-| `--dry-run` preview | `prepare_*` and `create_checkout` never move funds; re-calling with corrected input is safe |
+- A paid Operation reaches a terminal `SUCCEEDED` state. Nothing else is proof of payment: not a
+  webhook returning HTTP 200, not a return page, and not the user closing a hosted page.
+- A declined or risk-blocked attempt comes back as a refusal or a `next_action`; read the same
+  Operation rather than starting a new one.
+- An ambiguous timeout or transport error leaves the state unknown. Recover with `get_operation`;
+  never treat it as failed, and never retry the execution.
+- A 3DS challenge arrives as `REDIRECT_USER` with a `redirect_kind` naming the required human step.
+- `prepare_payment`, `create_checkout`, and `start_refund` never move funds, so re-calling one with
+  corrected input is always safe.
 
-There is no `customerApiKey` and no `CLINK_CUSTOMER_API_KEY` in the MCP contract. Authorization comes
-from the Host's OAuth connection plus, where required, an `ACTIVE` purchase instruction.
+Authorization comes from the Host's OAuth connection plus, where required, an `ACTIVE` purchase
+instruction. There is no customer API key in the MCP contract, and no credential is ever passed as a
+tool argument.
 
 ## Authorization and purchase instructions
 
@@ -186,21 +178,21 @@ from the Host's OAuth connection plus, where required, an `ACTIVE` purchase inst
 - A result the server reports as unknown (`refund_result_unknown`, `CONTACT_SUPPORT`) means money may
   have moved. Never submit again; follow the returned support path.
 
-## Recovery, fail-closed, and stack ownership
+## Recovery and fail-closed
 
 - `get_operation` is the only recovery path after a timeout, restart, or missed notification. It is
   always safe and never moves money.
 - An Operation-recovery timeout means the state is unknown, not failed. Tell the user plainly what is
   known and unknown.
-- The legacy `agentic-payment-skills` CLI path and this MCP path may be installed together but are
-  independent execution stacks. Before the first mutation for one payment, checkout, refund, or
-  instruction goal, the Host binds that goal to exactly one owner (`legacy_cli` or `mcp`) and keeps
-  the binding until the goal is terminal.
-- Timeout, transport failure, an unknown result, or an OAuth step-up never authorizes a retry through
-  the other stack, and an in-flight attempt never moves between stacks.
-- One resource has one watcher: do not run a legacy risk link or payment-order watch while the
-  matching MCP Operation is open, because Event Hub acknowledgement is destructive.
-- A Host that cannot enforce goal-scoped ownership must expose only one execution stack per session.
+- Never run a second prepare or execute for the same goal while an Operation is non-terminal, and
+  never start a competing attempt after an unknown result: one goal has exactly one in-flight
+  Operation.
+- A timeout, transport failure, unknown result, or OAuth step-up never authorizes a retry of the
+  execution. Recover the existing Operation instead.
+- One resource has one watcher: do not run a separate external watch (a support-portal order view or
+  a merchant-side poll) for a resource whose Clink MCP Operation is open, because Event Hub
+  acknowledgement is destructive.
+- A Host that cannot keep one goal on one Operation must serialize its own calls per goal.
 
 ## What the MCP payment capability does not own
 
@@ -232,13 +224,11 @@ from the Host's OAuth connection plus, where required, an `ACTIVE` purchase inst
 A good Clink MCP payment integration answer should include:
 
 - the resolved environment and its exact MCP endpoint, and the `clink` connection name
-- how the runtime installs or verifies the `clink-payment` skill without overwriting the legacy
-  `agentic-payment-skills` package
-- the goal-scoped execution-owner rule and how the Host enforces it
+- how the runtime installs and authenticates the `clink-payment` skill in the selected Host
+- the one-goal-one-Operation rule and how the runtime enforces it
 - the specific MCP tools the runtime calls, in order, and which `next_action` types it must handle
 - where `clink://skill/rules` is read and why local text is never authoritative
 - the instruction/authorization path for the amounts involved
-- the recovery path after a timeout or unknown result, without cross-stack retry
+- the recovery path after a timeout or unknown result, without a competing retry
 - the ownership matrix across merchant skill, agent runtime, adapter, merchant server, and the Clink
   MCP server
-- the legacy `clink-cli` migration mapping when the design was originally written against the CLI
