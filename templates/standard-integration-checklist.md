@@ -18,7 +18,7 @@
 - For local env-file apps, prefer `clink webhook endpoint ensure --url <public-webhook-url> --events commerce --save-secret --sync-env-file <env-file> --json`
 - Use `checkout,disputes` for a one-time checkout, at least `checkout,subscriptions,disputes` for subscriptions, and add `payment-methods` when saved payment methods must be synchronized
 - Confirm endpoint ensure validates events against runtime `GET /webhook/events`, merges existing events by default, and uses `--allow-remove-events` only for an explicitly authorized replacement
-- Treat `core` as compatibility-only/minimal-demo: it contains exactly `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`; warn that it omits `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.failed`, and `session.expired`, then migrate complete charging integrations to stable 31-event `commerce`
+- Treat `core` as compatibility-only/minimal-demo: it contains exactly `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`; warn that it omits `order.created`, `order.next_action`, `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.created`, `refund.failed`, and `session.expired`, then migrate complete charging integrations to stable 31-event `commerce`
 - Sync the returned or rotated signing secret to the merchant runtime as `CLINK_WEBHOOK_SIGNING_KEY`
 - Restart or redeploy after syncing the webhook signing secret
 - Accept only integer second/millisecond `X-Clink-Timestamp` values within 300 seconds and verify `X-Clink-Signature` against the unmodified raw body before JSON parsing or normalization
@@ -29,4 +29,4 @@
 - Separate payment confirmation from downstream merchant fulfillment
 - Verify real sandbox payment by confirming local order paid/completed and entitlement/fulfillment completion, not just webhook HTTP 200
 - Treat fixtures, mocks, and local replays as local inputs rather than Clink server events; keep them separate from real Clink sandbox Merchant Webhook UAT and use deprecated `--fixture-profile legacy` only for explicit compatibility tests
-- Model refund as a lifecycle, not as a guaranteed public create API
+- Model refund as a lifecycle around the documented `POST /refund` create API: require the original `orderId`, use `refundMerchantOrderId` for idempotency, query `GET /refund/{id}` before retrying an unknown result, and consume `refund.created`, `refund.succeeded`, and `refund.failed`

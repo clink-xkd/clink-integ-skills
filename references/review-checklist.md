@@ -34,7 +34,7 @@ This file is for final review and self-check. It is not the primary workflow doc
 - does a complete charging/subscription implementation use `clink webhook endpoint ensure --events commerce --save-secret --json`, with only scenario-safe narrower scopes (`checkout,disputes`; at least `checkout,subscriptions,disputes`; optional `payment-methods`)
 - does review inspect the actual endpoint command, verify runtime Catalog validation and default merge semantics, and allow `--allow-remove-events` only for explicit replacement
 - does stable `commerce` remain 31 events without silently adding a future `payment_method.deleted`
-- if `core` appears for compatibility/minimal demo, is it beside its exact events (`session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, `invoice.paid`), the omissions `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.failed`, `session.expired`, and a migration recommendation to `commerce`
+- if `core` appears for compatibility/minimal demo, is it beside its exact events (`session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, `invoice.paid`), the omissions `order.created`, `order.next_action`, `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.created`, `refund.failed`, `session.expired`, and a migration recommendation to `commerce`
 - when Dashboard webhook visibility or manual fallback is mentioned, does the output identify `Merchant Dashboard > Developers > Webhooks` while keeping `clink webhook endpoint ensure` as the default path
 - does webhook setup sync the returned or rotated signing secret into the merchant runtime as `CLINK_WEBHOOK_SIGNING_KEY`
 - for local `.env` apps, does webhook setup use `clink webhook endpoint ensure --save-secret --sync-env-file <env-file>` or an equivalent automated env write
@@ -64,7 +64,7 @@ This file is for final review and self-check. It is not the primary workflow doc
 - does real-payment validation require local order paid/completed plus entitlement/fulfillment completion, not just webhook HTTP 200
 - after a sandbox integration is ready for card-binding payment testing, does the final delivery remind the user about test card `4242424242424242`, any 3-digit CVC, and any future expiry date without presenting it as production guidance
 - does the design clearly separate payment confirmation from merchant fulfillment when downstream delivery exists
-- does refund handling describe lifecycle behavior instead of assuming unsupported create APIs
+- does refund handling use documented `POST /refund` with `refundMerchantOrderId` idempotency, `GET /refund/{id}`, and `refund.created`/`refund.succeeded`/`refund.failed` lifecycle events
 
 ## Elements Integration Checks
 
@@ -73,7 +73,7 @@ This file is for final review and self-check. It is not the primary workflow doc
 - does it identify inline, modal, drawer, multi-step, or headless host UI as the selected layout when layout matters
 - does it confirm the frontend framework or ask for it before framework-specific code
 - does it confirm backend-created checkout session before `loadClinkElements`
-- does it confirm the checkout session is intended for Elements rather than hosted checkout, including `uiMode: "elements"` and a `redirectUrl` containing `{ELEMENTS_SESSION_ID}`
+- does it confirm the checkout session is intended for Elements rather than hosted checkout, including `uiMode: "elements"` and a `returnUrl` containing `{ELEMENTS_SESSION_ID}`
 - does it keep order creation and checkout session creation on the server
 - does it keep Secret Key and webhook signing key out of frontend code
 - does it ensure Next.js or similar framework examples are browser-only where SDK DOM access is required
@@ -158,3 +158,11 @@ This file is for final review and self-check. It is not the primary workflow doc
 - are detailed workflows moved into reference modules
 - are English and Chinese docs aligned when both are updated
 - do validation-heavy answers point to generated artifacts or lint reports when that would help the developer more than prose
+
+## Current API and MCP Checks
+
+- do API examples send X-API-Key and a fresh millisecond X-Timestamp?
+- does webhook verification check X-Clink-SignType: SHA256, HMAC SHA-256, and a constant-time comparison over the raw body?
+- does the order model subscribe to order.created and order.next_action, keep one row per payment attempt, and separate Session lifecycle from payment status?
+- does retry exhaustion persist a dead-letter/outbox record and trigger active reconciliation?
+- when MCP is in scope, does the review cover Wallet, UCP Checkout, Browser Pay, OAuth/PKCE, purchase instructions, closed next_action handling, and same-Operation recovery?

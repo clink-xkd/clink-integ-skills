@@ -3,7 +3,20 @@
   "paths": {
     "/checkout/session": {
       "post": {
-        "summary": "Create checkout session"
+        "summary": "Create checkout session",
+        "parameters": [
+          { "$ref": "#/components/parameters/ApiKeyHeader" },
+          { "$ref": "#/components/parameters/TimestampHeader" }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionCreateReq"
+              }
+            }
+          }
+        }
       }
     },
     "/checkout/session/{id}": {
@@ -14,6 +27,41 @@
     "/refund/{id}": {
       "get": {
         "summary": "Get refund"
+      }
+    },
+    "/refund": {
+      "post": {
+        "summary": "Create refund",
+        "description": "Create a refund; refundMerchantOrderId is used for idempotency",
+        "parameters": [
+          { "$ref": "#/components/parameters/ApiKeyHeader" },
+          { "$ref": "#/components/parameters/TimestampHeader" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundCreateApiRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payment": {
+      "post": {
+        "summary": "Create payment"
+      }
+    },
+    "/subscription": {
+      "post": {
+        "summary": "Create subscription"
+      }
+    },
+    "/billing/session": {
+      "post": {
+        "summary": "Create customer portal session"
       }
     },
     "/order/payment-session": {
@@ -51,6 +99,47 @@
   },
   "components": {
     "schemas": {
+      "SessionCreateReq": {
+        "type": "object",
+        "required": ["originalAmount", "originalCurrency"],
+        "properties": {
+          "originalAmount": { "type": "number" },
+          "originalCurrency": { "type": "string" },
+          "uiMode": { "enum": ["hostedPage", "elements"] },
+          "returnUrl": { "type": "string" },
+          "paymentMethodSortOrder": { "type": "array", "items": { "type": "string" } },
+          "localPriceOnly": { "type": "boolean" },
+          "allowPromotionCodes": { "type": "boolean" },
+          "showPromotionCode": { "type": "boolean" },
+          "promotionCode": { "type": "string" },
+          "historicalPaymentInstrumentImport": { "type": "object" },
+          "scheduledPhases": { "type": "array", "maxItems": 10 }
+        }
+      },
+      "RefundCreateApiRequest": {
+        "type": "object",
+        "required": ["orderId", "refundMerchantOrderId", "refundAmount"],
+        "properties": {
+          "orderId": { "type": "string" },
+          "refundMerchantOrderId": { "type": "string" },
+          "refundAmount": { "type": "number" },
+          "refundReasonType": { "type": "integer", "enum": [0, 1, 2, 3] },
+          "remark": { "type": "string", "maxLength": 500 }
+        }
+      },
+      "RefundApiVo": {
+        "type": "object",
+        "properties": {
+          "refundId": { "type": "string" },
+          "refundMerchantOrderId": { "type": "string" },
+          "orderId": { "type": "string" },
+          "refundAmount": { "type": "number" },
+          "refundCurrency": { "type": "string" },
+          "status": { "enum": ["created", "success", "failed", "closed", "received", "refunding"] },
+          "failureCode": { "type": "string" },
+          "failureMessage": { "type": "string" }
+        }
+      },
       "AgentChargeSessionBo": {
         "type": "object"
       },
@@ -65,6 +154,21 @@
       },
       "CustomerVerifyDataVo": {
         "type": "object"
+      }
+    },
+    "parameters": {
+      "ApiKeyHeader": {
+        "name": "X-API-Key",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string" }
+      },
+      "TimestampHeader": {
+        "name": "X-Timestamp",
+        "in": "header",
+        "required": true,
+        "description": "Current Unix timestamp in milliseconds",
+        "schema": { "type": "string" }
       }
     }
   }

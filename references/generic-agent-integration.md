@@ -2,18 +2,31 @@
 
 ## Definition
 
-Merchant skill for generic agent integration is the Clink integration path where a merchant skill, merchant tool, or merchant-facing capability runs inside a non-OpenClaw agent runtime and uses `agentic-payment-skills` as its payment skill.
+Merchant skill for generic agent integration is the Clink integration path where a merchant skill, merchant tool, or merchant-facing capability runs inside a non-OpenClaw agent runtime. New agent-facing payment capability should use the connected Clink MCP server; `agentic-payment-skills`, `clink-payment-skill`, and `clink-cli` remain legacy migration references for runtimes that explicitly still depend on them.
 
 Use this path when the integrator has its own generic agent runtime, orchestration layer, tool protocol, or chat surface, and wants a merchant skill in that runtime to use `agentic-payment-skills` / `clink-payment-skill` through `clink-cli`.
 
-It also covers merchant-originated payment handoff after a merchant API or tool returns `402 Payment Required`. In that pattern, the merchant response provides a structured payment requirement, and the generic agent runtime or adapter turns that requirement into an `agentic-payment-skills` invocation after explicit user authorization.
+It also covers merchant-originated payment handoff after a merchant API or tool returns `402 Payment Required`. In that pattern, the merchant response provides a structured payment requirement, and the generic agent runtime or adapter turns that requirement into a Clink MCP operation (or an explicitly selected legacy invocation) after explicit user authorization.
 
 This path is different from:
 
 - standard integration, where a merchant backend directly creates checkout sessions and owns the browser payment entry
 - merchant skill for OpenClaw integration, where OpenClaw skills use `openclaw-payment-skills` and share known skill/runtime conventions
 
-The generic agent side does not assume OpenClaw-specific session state, tool names, memory layout, notification channels, or resume behavior. Those details must be defined by the integrator, while direct payment execution follows `agentic-payment-skills`.
+The generic agent side does not assume OpenClaw-specific session state, tool names, memory layout, notification channels, or resume behavior. Those details must be defined by the integrator, while payment execution follows the MCP contract in `references/mcp-agent-integration.md` when MCP is selected.
+
+## Current MCP payment path
+
+For a new integration, connect the agent to the selected Clink MCP resource (`https://uat-api.clinkbill.com/mcp` for sandbox or `https://api.clinkbill.com/mcp` for production) with OAuth Authorization Code + PKCE. Keep the OAuth `resource` and token audience equal to that endpoint and store tokens per user. Do not put API keys or bearer tokens in MCP configuration.
+
+Route capabilities through the server's current `clink://skill/rules` resource and `tools/list` schema:
+
+- Wallet: `get_account_state`, `set_default_card`, `start_payment_method_action`, and purchase-instruction tools
+- UCP: `discover_catalog`, `get_product`, `create_checkout`, `update_checkout`, `complete_checkout`, and UCP order/delivery readers
+- Browser Pay: `get_credential` followed by merchant submission and `confirm_result`
+- recovery: `get_operation` for the same Operation after timeout or interruption
+
+Only the closed `next_action` types (`PROVIDE_INPUT`, `CONFIRM`, `REDIRECT_USER`, `SETUP_REQUIRED`, `POLL_OPERATION`, `WAIT_OPERATION`, `CONTACT_SUPPORT`) are valid branch points. One goal owns one payment operation; an unknown result must be recovered before any retry or migration to the legacy CLI.
 
 ## Payment Skill Dependency
 
@@ -309,6 +322,8 @@ Do not let multiple layers independently confirm the same payment result.
 
 A good merchant skill for generic agent integration output should usually include:
 
+- Clink MCP dependency and OAuth/PKCE checklist when MCP is selected
+- UCP, Wallet, Browser Pay, purchase-instruction, and Operation-recovery routing when those capabilities are in scope
 - runtime contract assumptions
 - agentic-payment-skills dependency checklist
 - session mode, direct mode, or adapter mode selection

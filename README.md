@@ -2,7 +2,7 @@
 
 English | [简体中文](README-zh.md)
 
-`clink-integ-skills` is a Codex-compatible skill for helping coding agents integrate ClinkBill payments. The current version is CLI-first: it guides agents to use `clink-integ-cli`, Secret Key authentication, product catalog import, checkout or subscription APIs, webhook endpoint automation, webhook signature verification, and sandbox validation.
+`clink-integ-skills` is a Codex-compatible skill for helping coding agents integrate ClinkBill payments. It covers the merchant-side offline CLI and Secret Key API path, plus the agent-facing Clink MCP path for UCP Checkout, Wallet, Browser Pay, OAuth/PKCE, and Operation recovery.
 
 Use the parent `agent-prompts` repository as the distribution package. This folder is the installable skill, and the parent repository also contains short prompts to give to agents. The agent-facing default prompt is in `agents/openai.yaml`, and longer Chinese prompt references are in `references/agent-prompt.zh-CN.md` and `references/universal-agent-prompt.zh-CN.md`.
 
@@ -62,13 +62,13 @@ clink webhook endpoint ensure \
 
 Use `commerce` for a complete charging or subscription integration. A one-time checkout can use `checkout,disputes`; a subscription integration must use at least `checkout,subscriptions,disputes`; add `payment-methods` when saved payment methods must be synchronized, or keep `commerce`.
 
-`core` is compatibility-only and suitable only for a minimal demo. Its exact six events are `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`. It omits `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.failed`, and `session.expired`; existing `core` endpoints should migrate to `commerce` for complete charging coverage.
+`core` is compatibility-only and suitable only for a minimal demo. Its exact six events are `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`. It omits `order.created`, `order.next_action`, `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.created`, `refund.failed`, and `session.expired`; existing `core` endpoints should migrate to `commerce` for complete charging coverage.
 
 Endpoint ensure validates selected events against runtime `GET /webhook/events` and merges with an existing endpoint's events by default. Use `--allow-remove-events` only when replacing the event set and deleting existing events is explicitly intended. The versioned `commerce` preset remains a stable 31-event set; future Catalog events such as `payment_method.deleted` are available only through dynamic `all` or an explicit event selection until a later preset version changes that contract.
 
-After `--save-secret`, the agent must sync the returned or rotated signing secret into the merchant runtime as `CLINK_WEBHOOK_SIGNING_KEY`, then restart or redeploy the app. A webhook URL change requires running `ensure` again and repeating the sync.
+After `--save-secret`, the agent must sync the returned or rotated signing secret into the merchant runtime as `CLINK_WEBHOOK_SIGNING_KEY`, then restart or redeploy the app. A webhook URL change requires running `ensure` again and repeating the sync. API requests send `X-API-Key` and a fresh millisecond `X-Timestamp`; production accepts roughly +/-2 minutes while sandbox is currently more lenient.
 
-The default local Merchant Webhook fixture uses an `event_` ID, `object: "event"`, integer Unix-millisecond `created`, an object-valued `data.object`, Invoice `items`, and no outer `livemode`. The flattened `--fixture-profile legacy` shape is deprecated and must be selected explicitly. `clink webhook fixture` and `clink webhook simulate` are local validation tools, not Clink server events and not proof of a real Clink sandbox Merchant Webhook UAT. Handlers must accept only integer second or millisecond `X-Clink-Timestamp` values within 300 seconds, verify the unmodified raw body before JSON parsing, reject malformed or unknown events with non-2xx responses, and use a durable Inbox keyed by `event.id` even inside that time window.
+The default local Merchant Webhook fixture uses an `event_` ID, `object: "event"`, integer Unix-millisecond `created`, an object-valued `data.object`, Invoice `items`, and no outer `livemode`. The flattened `--fixture-profile legacy` shape is deprecated and must be selected explicitly. `clink webhook fixture` and `clink webhook simulate` are local validation tools, not Clink server events and not proof of a real Clink sandbox Merchant Webhook UAT. Handlers must accept only integer second or millisecond `X-Clink-Timestamp` values within 300 seconds, verify the unmodified raw body before JSON parsing, reject malformed or unknown events with non-2xx responses, and use a durable Inbox keyed by `event.id` even inside that time window. Check `X-Clink-SignType: SHA256`, verify HMAC SHA-256 with a constant-time comparison over the raw body, subscribe to `order.created` and `order.next_action`, model multiple payment attempts per Session, and retain a dead-letter/outbox record after retry exhaustion.
 
 ## What The Skill Covers
 
@@ -77,11 +77,12 @@ The default local Merchant Webhook fixture uses an `event_` ID, `object: "event"
 - scanning the target project or website for paid products, prices, subscription plans, and billing intervals
 - generating a deterministic `clink-catalog.json` with product image sources (`imageId`, `imageUrl`, or `imageFile`)
 - validating, planning, and importing catalog data with `clink catalog validate`, `clink catalog plan`, and `clink catalog import`
-- server-side checkout and subscription route design
+- server-side checkout, payment, subscription, and refund route design (including `POST /refund`)
 - webhook endpoint automation with `clink webhook endpoint ensure`
 - raw-body webhook signature verification, `merchantReferenceId` + `sessionId` order matching, idempotency, retry safety, and out-of-order handling
 - Elements embedded checkout guidance through `@clink-ai/clink-elements`
 - generic agent and OpenClaw merchant skill payment handoff design
+- Clink MCP integration for UCP, Wallet, Browser Pay, OAuth/PKCE, purchase instructions, and same-Operation recovery
 - review, validation, and developer-facing checklist generation
 
 The agent discovers product data from the merchant project. The CLI validates, plans, imports, and manages Clink-side resources.
@@ -91,7 +92,7 @@ The agent discovers product data from the merchant project. The CLI validates, p
 Use this concise prompt when handing a project to an agent:
 
 ```text
-Use $clink-integ-skills to integrate ClinkBill payments into this project with clink-integ-cli, Secret Key setup, product catalog import, checkout/subscription APIs, webhook endpoint automation, and sandbox validation.
+Use $clink-integ-skills to integrate ClinkBill payments into this project with the merchant CLI/Secret Key path or Clink MCP, covering checkout, payment, subscription, refund, webhook, UCP, Wallet, Browser Pay, and sandbox validation as applicable.
 ```
 
 The skill itself tells the agent which references to read for standard integration, onboarding, validation, Elements, generic agent payment skills, and OpenClaw payment skills.
@@ -122,6 +123,7 @@ No runtime dependency install is required for the skill itself.
 | `agents/openai.yaml` | Agent UI metadata and default prompt |
 | `references/clink-integ-cli-integration.md` | CLI-first Secret Key, catalog, checkout, webhook, and sandbox workflow |
 | `references/standard-integration.md` | Standard Clink integration workflow |
+| `references/mcp-agent-integration.md` | MCP OAuth, UCP Checkout, Wallet, Browser Pay, and Operation recovery |
 | `references/new-user-onboarding.md` | New user onboarding and first sandbox checkout workflow |
 | `references/agent-prompt.zh-CN.md` | Chinese agent prompt reference |
 | `references/universal-agent-prompt.zh-CN.md` | Universal Chinese agent prompt reference |

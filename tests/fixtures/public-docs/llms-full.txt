@@ -6,20 +6,33 @@ Clink supports merchant standard integration and merchant agent integration.
 
 ## Integration
 
-Merchant standard integration covers checkout session creation, webhook handling, and refund synchronization.
+Merchant standard integration covers checkout session creation, `POST /payment`, `POST /subscription`,
+`POST /billing/session`, webhook handling, and refund synchronization.
 
 Merchant agent integration covers `POST /order/payment-session`, `GET /order/payment-session/{sessionId}`, and `WEBHOOK customer.verify`.
 
 ## Checkout Session
 
-Use `/checkout/session` to create a checkout session.
+Use `/checkout/session` to create a checkout session. API requests send `X-API-Key` and a fresh
+millisecond `X-Timestamp`. Elements uses `uiMode: "elements"` and `returnUrl` with
+`{ELEMENTS_SESSION_ID}`. Checkout supports `paymentMethodSortOrder`, `localPriceOnly`,
+promotion codes, `historicalPaymentInstrumentImport`, and `scheduledPhases`.
 
 ## Refund
 
-Refunds are modeled as a lifecycle. The current public docs confirm querying refund details through `GET /refund/{id}`.
-
-No public refund-create API is confirmed in this docs export.
+Refunds are modeled as a lifecycle. `POST /refund` creates a refund and `GET /refund/{id}`
+retrieves it. The request requires `orderId`, `refundMerchantOrderId`, and `refundAmount`;
+reusing `refundMerchantOrderId` is idempotent. Webhooks include `refund.created`,
+`refund.succeeded`, and `refund.failed`.
 
 ## Webhooks
 
-Webhook implementations should verify `X-Clink-Timestamp` and `X-Clink-Signature`, and must tolerate retries and out-of-order delivery.
+Webhook implementations should verify `X-Clink-SignType: SHA256`, `X-Clink-Timestamp`, and
+`X-Clink-Signature` using raw-body HMAC SHA-256 and a constant-time comparison. Subscribe to
+`order.created`, `order.next_action`, `order.succeeded`, and `order.failed`; a Session may have
+multiple payment attempts. Keep Session lifecycle separate from payment state, tolerate retries
+and out-of-order delivery, and retain a dead-letter/outbox record after retry exhaustion.
+
+Agent-facing docs cover Clink MCP, UCP Checkout, Wallet Service, Browser Pay, OAuth/PKCE, and
+Operation recovery. The live `clink://skill/rules` resource is authoritative for current MCP
+tool schemas and the closed `next_action` set.

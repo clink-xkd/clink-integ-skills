@@ -2,7 +2,7 @@
 
 ## Definition
 
-Merchant skill for OpenClaw integration means the merchant's own OpenClaw agent or merchant skill integrates with `openclaw-payment-skills` to gain OpenClaw-native payment and payment handoff capability.
+Merchant skill for OpenClaw integration means the merchant's own OpenClaw agent or merchant skill integrates with the connected Clink MCP server for current payment capability. `openclaw-payment-skills` remains a legacy compatibility and migration reference for deployments that explicitly still use it.
 
 The core scope of this path includes:
 
@@ -18,7 +18,16 @@ The merchant side does not rebuild the full payment infrastructure itself. Inste
 - `openclaw-payment-skills` handles payment infrastructure and payment execution
 - the merchant side handles its own business preparation, confirmation, and task recovery
 
-This path is specifically for OpenClaw. For merchant skill for generic agent integration using `agentic-payment-skills` / `clink-payment-skill` through `clink-cli`, use `references/generic-agent-integration.md`.
+This path is specifically for OpenClaw and its OpenClaw-native runtime conventions. For a non-OpenClaw runtime, use `references/generic-agent-integration.md`; for MCP tool, Wallet, UCP, Browser Pay, or OAuth details, use `references/mcp-agent-integration.md`.
+
+## Current Clink MCP boundary
+
+Connect OpenClaw to the sandbox or production MCP resource with OAuth Authorization Code + PKCE,
+keeping the OAuth `resource` and token audience equal to the MCP endpoint. The Host stores each
+user's tokens; the MCP server owns Wallet Service, UCP Checkout, Browser Pay credentials, and
+purchase authorization. Read the live `clink://skill/rules` resource before relying on tool
+schemas. After a timeout, resume the same Operation with `get_operation`; never start a second
+charge because a response was lost.
 
 ## Main Responsibilities
 
@@ -161,6 +170,8 @@ Do not send duplicate merchant success/failure notifications if the confirmation
 
 A good merchant skill for OpenClaw integration output should usually include:
 
+- Clink MCP connection, OAuth/PKCE, and `clink://skill/rules` dependency notes
+- Wallet, UCP Checkout, Browser Pay, and same-Operation recovery steps when requested
 - merchant skill responsibilities
 - merchant server responsibilities
 - session mode vs direct mode selection

@@ -36,7 +36,7 @@ The core flow is:
 
 1. Merchant server uses the Secret Key to create or confirm a local merchant order.
 2. Merchant server creates a checkout session intended for Elements and stores reconciliation context.
-3. Merchant server returns only `sessionId`, `publishKey`, and `environment`, or equivalent frontend-safe configuration.
+3. Merchant server returns only the `sessionId` needed to initialize the browser component. `publishKey` and `environment` are frontend deployment configuration, not values to fetch from or trust in a payment response.
 4. Merchant client initializes `loadClinkElements` in browser-only code.
 5. Merchant client handles SDK events for UX.
 6. Merchant server verifies webhooks and performs authoritative order, subscription, refund, and fulfillment synchronization.
@@ -46,16 +46,16 @@ When creating an Elements checkout session, include the Elements UI mode and red
 ```js
 {
   uiMode: "elements",
-  redirectUrl: "https://merchant.example/checkout/{ELEMENTS_SESSION_ID}"
+  returnUrl: "https://merchant.example/checkout/{ELEMENTS_SESSION_ID}"
 }
 ```
 
-Set `uiMode: "elements"`. `{ELEMENTS_SESSION_ID}` is the placeholder for the session ID that will be filled for the created Elements session. Keep this request server-side because it belongs to checkout session creation.
+Set `uiMode: "elements"` and provide `returnUrl`. `{ELEMENTS_SESSION_ID}` is the placeholder for the session ID that will be filled for the created Elements session. Keep this request server-side because it belongs to checkout session creation. `redirectUrl` is a response field used by `requires_action` flows; it is not the Elements request field.
 
 Hard boundaries:
 
 - never put Secret Key, server SDK calls, checkout session creation, or merchant order creation logic in browser code
-- frontend code uses `publishKey`, `environment`, and `sessionId`
+- frontend code uses the configured `publishKey` and `environment`, plus the server-created `sessionId`
 - Next.js and similar framework components that access the SDK or DOM must be client-only, for example with `"use client"`
 - server-side webhook and reconciliation logic remains required even when `session-success` fires
 

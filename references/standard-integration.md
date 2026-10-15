@@ -9,6 +9,18 @@ Standard integration is the direct merchant-side Clink integration path for:
 - merchant frontend payment entry through JS SDK embedded form or configured link opening
 - refund lifecycle handling
 
+The merchant API surface currently includes `POST /checkout/session`, `POST /payment`,
+`POST /subscription`, `POST /billing/session`, and the TypeScript SDK
+`@clink-ai/clink-typescript-sdk`. Use the smallest route that matches the product flow:
+Checkout is customer-present UI, `/payment` is a server-created payment without a full
+Checkout UI, `/subscription` starts recurring billing for an existing customer/payment
+instrument, and `/billing/session` opens Customer Portal management.
+
+Every server request uses `X-API-Key` and a freshly generated millisecond `X-Timestamp`.
+Production timestamps must be within about two minutes of Clink platform time; sandbox is
+currently much more lenient (about 24 hours), but integrations should still generate the
+timestamp immediately before each request. Never put a Secret API key in browser code.
+
 ## Workflow
 
 ### Step 0: Identify Merchant Stack
@@ -106,6 +118,26 @@ Important:
 
 Trusted local `clink checkout` commands may continue to accept a complete operator-controlled payload. That capability is separate from a generated public HTTP starter: its server creates or loads the local order, derives `merchantReferenceId`, and resolves `priceKey` or `planKey` before calling Clink.
 
+#### Checkout fields that need an explicit decision
+
+The current Checkout Session contract also supports:
+
+- `paymentMethodSortOrder` for display ordering only; it does not enable unavailable methods
+- `localPriceOnly` for one-time payments, with fallback to the original currency when no local price exists
+- `allowPromotionCodes`, `showPromotionCode`, and a server-supplied `promotionCode`
+- `historicalPaymentInstrumentImport` for supported channel migration (currently Stripe)
+- `scheduledPhases` for up to ten strictly increasing subscription plan phases
+
+Treat these as server-owned options. Validate promotion codes and price snapshots on the
+server, and do not let a browser change amount, currency, product, price, phase, or payment
+method policy.
+
+For recurring purchases, choose among a new Checkout Session, `POST /subscription` when a
+usable customer/payment instrument already exists, and `POST /billing/session` when the
+customer is managing an existing subscription. A Checkout Session can create several payment
+attempt Orders when a customer changes method after a decline; do not collapse those attempts
+into one event row.
+
 ### Step 4: Integrate The Merchant Frontend
 
 After the merchant backend creates the checkout session, the merchant frontend should decide how to hand the user into payment.
@@ -170,7 +202,7 @@ The merchant or agent should:
 
 Endpoint ensure validates selected events against runtime `GET /webhook/events` and merges the endpoint's existing events by default. Use `--allow-remove-events` only when replacing the set and removing existing events is explicitly authorized. Stable `commerce` contains 31 events; a future runtime event such as `payment_method.deleted` is available through dynamic `all` or explicit selection, but must not silently expand `commerce`.
 
-`core` is compatibility-only or for a minimal demo. It contains exactly `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`. Warning: it omits `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.failed`, and `session.expired`. Do not use it as a complete charging, subscription, or production recommendation; migrate existing `core` endpoints to `commerce`.
+`core` is compatibility-only or for a minimal demo. It contains exactly `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`. Warning: it omits `order.created`, `order.next_action`, `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.created`, `refund.failed`, and `session.expired`. Do not use it as a complete charging, subscription, or production recommendation; migrate existing `core` endpoints to `commerce`.
 
 Do not ask the user to provide `CLINK_WEBHOOK_SIGNING_KEY` at the beginning of the integration. The signing key should come from `clink webhook endpoint ensure --save-secret`. If a platform Secret API requires plaintext, use `--show-secret` only in the controlled write step and never include the raw value in the final answer.
 
@@ -217,8 +249,23 @@ The merchant backend should:
 - use a durable Inbox keyed by `event.id` to deduplicate retries even inside the accepted timestamp window and implement idempotent processing
 - handle retries safely
 - tolerate out-of-order delivery
+- expect Clink to retry delivery (up to 10 attempts with exponential backoff); persist a
+  durable Inbox and an Outbox/dead-letter record when processing is exhausted so an operator
+  can replay one event without replaying the entire stream
 - reconcile payment events against the local checkout/order using both `merchantReferenceId` and `sessionId` when both are present
 - reject, quarantine, or escalate events where `merchantReferenceId` and `sessionId` resolve to different local orders
+
+Subscribe to all four payment-attempt events: `order.created`, `order.next_action`,
+`order.succeeded`, and `order.failed`. Use the outer `event.created` of `order.created` as the
+only ordering source for attempts; status-event timestamps describe status changes, not Order
+creation. Keep Session lifecycle separate from payment state: `session.complete` and
+`session.expired` update the Session record, while the aggregate payment state comes from its
+attempts. An `order.next_action` attempt is pending/action-required and must not be retried as a
+new charge until its existing attempt is resolved.
+
+After a retry/dead-letter incident, process the event idempotently, then run an active API
+reconciliation for the affected Session and Orders. Do not acknowledge an unknown event as a
+successful payment.
 
 Prefer backend webhook-driven state synchronization over relying only on frontend redirects.
 
@@ -265,17 +312,31 @@ Refund should be modeled as a lifecycle, not only as a single action.
 
 The standard integration should cover:
 
-- dashboard-issued refunds
-- refund querying
-- refund webhook consumption
-- merchant-side refund and order synchronization
-- insufficient balance handling
-- refund eligibility checks
-- chargeback awareness
+- API-created refunds with `POST /refund` when the merchant has an eligible paid Order
+- refund querying with `GET /refund/{id}`
+- `refundMerchantOrderId` as the merchant idempotency key; reusing it returns the existing refund
+- `refundAmount`, `refundReasonType`, and an optional `remark` validated against the local order
+- `refund.created`, `refund.succeeded`, and `refund.failed` webhook consumption
+- dashboard-issued refunds and merchant-side refund/order synchronization
+- insufficient balance, already-refunded, eligibility, and chargeback handling
 
-Important current rule:
+Example server request:
 
-- do not assume a public refund-create API unless local docs explicitly show one
+```json
+{
+  "orderId": "order_xxxxx",
+  "refundMerchantOrderId": "refund_ref_10001",
+  "refundAmount": 19.99,
+  "refundReasonType": 2,
+  "remark": "Customer requested refund"
+}
+```
+
+The refund response is asynchronous in business terms even when the create call returns a
+record. Persist the returned `refundId`, query it when needed, and let refund webhooks move the
+local refund through `created`, `success`, `failed`, `closed`, `received`, or `refunding` states.
+Never create a second refund when a request times out; query by the original
+`refundMerchantOrderId` or the returned `refundId` first.
 
 ## Output Expectations
 

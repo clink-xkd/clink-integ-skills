@@ -1,3 +1,6 @@
 # Checkout Session
 
-`POST /checkout/session` creates a checkout session.
+`POST /checkout/session` creates a checkout session. Elements requests use `uiMode: "elements"`
+and `returnUrl` with `{ELEMENTS_SESSION_ID}`. Checkout also supports promotion codes,
+`paymentMethodSortOrder`, `localPriceOnly`, `historicalPaymentInstrumentImport`, and
+subscription `scheduledPhases`.

@@ -17,7 +17,7 @@ const WEBHOOK_VALIDATION_INPUT = [
   "We will run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events commerce --save-secret --json.",
   "We will store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret or secret manager.",
   "We will restart or redeploy the service after the secret sync.",
-  "We will verify X-Clink-Timestamp and X-Clink-Signature, implement idempotency, retries, and out-of-order handling.",
+  "We will verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature, implement idempotency, retries, and out-of-order handling.",
 ].join(" ");
 
 function check(condition, message) {
@@ -134,13 +134,21 @@ async function main() {
   check(agent.route === "merchant_agent_integration", "agent prompt should route to merchant_agent_integration");
   check(agent.artifacts.some((item) => item.name === "payment_handoff_contract"), "agent route should emit payment_handoff_contract artifact");
 
+  const mcpAgent = await runSkillRuntime({
+    prompt: "Connect Clink MCP with OAuth PKCE and design a UCP Checkout using Wallet and Browser Pay recovery.",
+    docsFallbackSource: docsFallback,
+  });
+  check(mcpAgent.route === "merchant_agent_integration", "MCP agent prompt should route to merchant_agent_integration");
+  check(mcpAgent.artifacts.some((item) => item.name === "payment_handoff_contract"), "MCP agent prompt should preserve payment handoff artifact");
+  check(mcpAgent.notes.some((item) => item.includes("MCP")) || mcpAgent.notes.some((item) => item.includes("Operation")), "MCP agent prompt should mention MCP recovery guidance");
+
   const docsQuestion = await runSkillRuntime({
     prompt: "Show me the public API to create a refund in Clink.",
     docsFallbackSource: docsFallback,
   });
   check(docsQuestion.docsGateInvoked === true, "docs question should invoke docs gate");
   check(["fallback", "refresh", "cache", "stale-cache"].includes(docsQuestion.docsTrace.action), "docs question should produce docs trace");
-  check(docsQuestion.notes.some((item) => item.includes("refund-create API")), "docs question should warn that refund-create API is not confirmed");
+  check(docsQuestion.notes.some((item) => item.includes("refund-create API")) || docsQuestion.notes.some((item) => item.includes("POST /refund")), "docs question should report the documented refund-create API");
   check(docsQuestion.route === "documentation_dialogue", "public API question should route to documentation_dialogue");
 
   const onboarding = await runSkillRuntime({
@@ -207,7 +215,7 @@ async function main() {
     docsFallbackSource: docsFallback,
   });
   check(refundLifecycle.docsGateInvoked === true, "refund lifecycle prompt should invoke docs gate");
-  check(refundLifecycle.notes.some((item) => item.includes("refund-create API")), "refund lifecycle prompt should warn when public refund-create API is unconfirmed");
+  check(refundLifecycle.notes.some((item) => item.includes("POST /refund")) || refundLifecycle.notes.some((item) => item.includes("refund-create API")), "refund lifecycle prompt should preserve the documented refund-create API note");
   checkEndpointEnsureEvents(refundLifecycle, "checkout,disputes", "refund lifecycle");
 
   const subscriptionBilling = await runSkillRuntime({
@@ -266,7 +274,7 @@ async function main() {
   for (const eventName of ["session.complete", "order.succeeded", "order.failed", "refund.succeeded", "subscription.created", "invoice.paid"]) {
     check(compatibilityArtifact?.summary?.includes(eventName), `core compatibility artifact should list ${eventName}`);
   }
-  for (const riskName of ["subscription.cancelled", "subscription.past_due", "subscription.updated.*", "invoice.open/void", "dispute.*", "refund.failed", "session.expired"]) {
+  for (const riskName of ["order.created", "order.next_action", "subscription.cancelled", "subscription.past_due", "subscription.updated.*", "invoice.open/void", "dispute.*", "refund.created", "refund.failed", "session.expired"]) {
     check(compatibilityArtifact?.summary?.includes(riskName), `core compatibility artifact should warn about omitted ${riskName}`);
   }
   check(compatibilityArtifact?.summary?.includes("exactly 6 events"), "core compatibility artifact should state the exact six-event count");

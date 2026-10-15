@@ -2,4 +2,7 @@
 
 Clink supports merchant standard integration and merchant agent integration.
 
-Webhook implementations should be configured from the merchant dashboard and validated server-side.
+Webhook implementations should use the Secret Key API and be validated server-side. API calls
+send `X-API-Key` and a millisecond `X-Timestamp`; production accepts roughly +/-2 minutes.
+The current integration surface includes `/checkout/session`, `/payment`, `/subscription`,
+`/billing/session`, and `/refund`.

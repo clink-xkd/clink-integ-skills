@@ -34,6 +34,7 @@ const requiredFiles = [
   "references/elements-integration.md",
   "references/agent-integration.md",
   "references/generic-agent-integration.md",
+  "references/mcp-agent-integration.md",
   "references/output-artifacts.md",
   "references/validation-workflow.md",
   "references/review-checklist.md",
@@ -351,6 +352,30 @@ const moduleExpectations = [
     ]
   },
   {
+    file: "references/mcp-agent-integration.md",
+    contains: [
+      "Clink MCP Agent Integration",
+      "https://uat-api.clinkbill.com/mcp",
+      "https://api.clinkbill.com/mcp",
+      "OAuth",
+      "PKCE",
+      "clink://skill/rules",
+      "get_account_state",
+      "create_purchase_instruction",
+      "discover_catalog",
+      "create_checkout",
+      "complete_checkout",
+      "get_credential",
+      "confirm_result",
+      "get_operation",
+      "next_action",
+      "UCP order",
+      "Browser Pay",
+      "constant",
+      "one payment intent owner"
+    ]
+  },
+  {
     file: "references/generic-agent-integration.md",
     contains: [
       "merchant skill for generic agent integration",
@@ -598,11 +623,14 @@ const coreEvents = [
 ];
 
 const coreOmissions = [
+  "order.created",
+  "order.next_action",
   "subscription.cancelled",
   "subscription.past_due",
   "subscription.updated.*",
   "invoice.open/void",
   "dispute.*",
+  "refund.created",
   "refund.failed",
   "session.expired"
 ];
@@ -791,8 +819,8 @@ if (exists("references/elements-integration.md")) {
     "references/elements-integration.md must document Elements checkout session uiMode"
   );
   check(
-    elementsGuide.includes("`{ELEMENTS_SESSION_ID}`"),
-    "references/elements-integration.md must document the Elements redirectUrl session placeholder"
+    elementsGuide.includes("`returnUrl`") && elementsGuide.includes("`{ELEMENTS_SESSION_ID}`"),
+    "references/elements-integration.md must document the Elements returnUrl session placeholder"
   );
 }
 

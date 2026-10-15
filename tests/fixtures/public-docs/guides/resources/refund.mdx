@@ -1,5 +1,6 @@
 # Refund
 
-Refund querying is available through `GET /refund/{id}`.
-
-The docs do not confirm a public refund-create API.
+Create refunds with `POST /refund` and query them with `GET /refund/{id}`. The request requires
+`orderId`, `refundMerchantOrderId`, and `refundAmount`; reusing `refundMerchantOrderId` is
+idempotent. Refund lifecycle webhooks include `refund.created`, `refund.succeeded`, and
+`refund.failed`.

@@ -75,6 +75,17 @@ A strong merchant skill for generic agent integration output should usually incl
 - idempotency and duplicate-delivery rules
 - ownership matrix for merchant skill or tool, agent runtime, adapter, merchant server, and `agentic-payment-skills`
 
+## Clink MCP Agent Artifacts
+
+When UCP, Wallet, Browser Pay, or MCP OAuth is in scope, also produce:
+
+- MCP endpoint and OAuth/PKCE registration checklist
+- per-user token storage and scope matrix
+- Wallet and purchase-instruction action map
+- UCP Checkout and digital-delivery flow
+- Browser Pay credential, merchant-observation, and `confirm_result` contract
+- Operation and `next_action` recovery matrix with fail-closed timeout handling
+
 ## Validation Artifacts
 
 For validation-heavy requests, prefer producing:

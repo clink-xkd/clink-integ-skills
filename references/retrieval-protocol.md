@@ -83,6 +83,10 @@ If you only need the current cache status, run:
 
 - `node scripts/refresh_official_docs.mjs --status`
 
+## MCP Agent Retrieval
+
+When UCP, Wallet, Browser Pay, MCP OAuth, or Operation recovery is in scope, refresh official docs first and read the smallest relevant sections for `api-reference/mcp/commerce`, `api-reference/mcp/wallet`, `api-reference/mcp/browser_pay`, `api-reference/mcp/operations`, `guides/agent/mcp_integration`, and `guides/agent/browser_pay`. The live `clink://skill/rules` resource returned by the connected MCP server is authoritative for current tool schemas and safety rules; this repository must not be treated as a replacement snapshot. Keep OAuth `resource` and token `audience` equal to the selected environment MCP endpoint.
+
 ## Default Sources
 
 - `llms-full.txt`

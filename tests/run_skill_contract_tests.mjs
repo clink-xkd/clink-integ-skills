@@ -39,7 +39,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events commerce --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret or secret manager.
     Restart or redeploy the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(validWebhook.valid === true, "complete webhook design should pass linting");
@@ -49,7 +49,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events checkout,subscriptions,disputes,payment-methods --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -63,7 +63,7 @@ function main() {
     Commerce is mentioned elsewhere in this design, but the command above remains core.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -81,7 +81,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events commerce --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -100,14 +100,14 @@ function main() {
     Run clink webhook endpoint ensure --url https://production.example.com/api/clink/webhook --events core --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
 
     ## Compatibility-only minimal demo
 
     Run clink webhook endpoint ensure --url https://demo.example.com/api/clink/webhook --events core --save-secret --json.
     The exact six events are session.complete, order.succeeded, order.failed, refund.succeeded, subscription.created, and invoice.paid.
-    It omits subscription.cancelled, subscription.past_due, subscription.updated.*, invoice.open/void, dispute.*, refund.failed, and session.expired.
+    It omits order.created, order.next_action, subscription.cancelled, subscription.past_due, subscription.updated.*, invoice.open/void, dispute.*, refund.created, refund.failed, and session.expired.
     Migrate to --events commerce for a complete charging integration.
   `);
   check(
@@ -128,11 +128,11 @@ function main() {
 
     For legacy compatibility only, run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events core --save-secret --json.
     The exact six events are session.complete, order.succeeded, order.failed, refund.succeeded, subscription.created, and invoice.paid.
-    It omits subscription.cancelled, subscription.past_due, subscription.updated.*, invoice.open/void, dispute.*, refund.failed, and session.expired.
+    It omits order.created, order.next_action, subscription.cancelled, subscription.past_due, subscription.updated.*, invoice.open/void, dispute.*, refund.created, refund.failed, and session.expired.
     Migrate to --events commerce for the complete charging integration.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -152,11 +152,11 @@ function main() {
     This is a compatibility-only minimal demo.
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events core --save-secret --json.
     The exact six events are session.complete, order.succeeded, order.failed, refund.succeeded, subscription.created, and invoice.paid.
-    It omits subscription.cancelled, subscription.past_due, subscription.updated.*, invoice.open/void, dispute.*, refund.failed, and session.expired.
+    It omits order.created, order.next_action, subscription.cancelled, subscription.past_due, subscription.updated.*, invoice.open/void, dispute.*, refund.created, refund.failed, and session.expired.
     Migrate to --events commerce for a complete charging integration.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -177,14 +177,14 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events checkout,subscriptions,disputes --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
 
     ## Legacy compatibility only
 
     Run clink webhook endpoint ensure --url https://legacy.example.com/api/clink/webhook --events core --save-secret --json.
     The exact six events are session.complete, order.succeeded, order.failed, refund.succeeded, subscription.created, and invoice.paid.
-    It omits subscription.cancelled, subscription.past_due, subscription.updated.*, invoice.open/void, dispute.*, refund.failed, and session.expired.
+    It omits order.created, order.next_action, subscription.cancelled, subscription.past_due, subscription.updated.*, invoice.open/void, dispute.*, refund.created, refund.failed, and session.expired.
     Migrate to --events commerce for a complete charging integration.
   `);
   check(
@@ -197,7 +197,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events checkout,disputes --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -210,7 +210,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events checkout,subscriptions,disputes --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -223,7 +223,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events checkout,disputes --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -236,7 +236,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events checkout,disputes --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -249,7 +249,7 @@ function main() {
     Run clink dashboard webhook ensure --url https://example.com/api/clink/webhook --events core --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(dashboardAliasCore.valid === false, "dashboard webhook ensure core should be linted as an actual command");
@@ -267,7 +267,7 @@ function main() {
     Run node vendor/clink-integ-cli/clink-integ-cli webhook endpoint ensure --url https://example.com/api/clink/webhook --events core --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(vendoredNodeCore.valid === false, "vendored node bundle core should be linted as an actual command");
@@ -281,7 +281,7 @@ function main() {
     Run node "$CLINK_INTEG_CLI" webhook endpoint ensure --url https://example.com/api/clink/webhook --events commerce --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(bashEnvBundle.valid === true, "$CLINK_INTEG_CLI invocation should pass webhook validation");
@@ -298,7 +298,7 @@ function main() {
     ${bracedBashCommand}
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(bracedBashEnvBundle.valid === true, "multiline ${CLINK_INTEG_CLI} invocation should pass webhook validation");
@@ -315,7 +315,7 @@ function main() {
     ${powershellCommand}
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(powershellEnvBundle.valid === true, "multiline PowerShell CLINK_INTEG_CLI invocation should pass webhook validation");
@@ -325,7 +325,7 @@ function main() {
     Run node "$CLINK_INTEG_CLI" webhook endpoint ensure --url https://example.com/api/clink/webhook --events core --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(envBundleCore.valid === false, "environment-variable bundle invocation must not bypass core safety");
@@ -339,7 +339,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events checkout,subscriptions,disputes --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -352,7 +352,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events subscriptions --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -369,7 +369,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events checkout --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -382,7 +382,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events checkout,disputes --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -395,7 +395,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events checkout --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -408,7 +408,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events checkout --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -421,7 +421,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events disputes --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -433,7 +433,7 @@ function main() {
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events core --save-secret --json.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -450,7 +450,7 @@ function main() {
     The prose recommends commerce for a complete charging integration.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(missingCommandEvents.valid === false, "ensure command without --events should fail linting");
@@ -465,7 +465,7 @@ function main() {
     Core contains session.complete, order.succeeded, order.failed, refund.succeeded, subscription.created, and invoice.paid.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -485,11 +485,11 @@ function main() {
     This is a compatibility-only minimal demo.
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events core --save-secret --json.
     The exact six events are session.complete, order.succeeded, order.failed, refund.succeeded, subscription.created, and invoice.paid.
-    It omits subscription.cancelled, subscription.past_due, subscription.updated.*, invoice.open/void, dispute.*, refund.failed, and session.expired.
+    It omits order.created, order.next_action, subscription.cancelled, subscription.past_due, subscription.updated.*, invoice.open/void, dispute.*, refund.created, refund.failed, and session.expired.
     Migrate to --events commerce for a complete charging integration.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(validCompatibilityCore.valid === true, "fully disclosed compatibility-only core demo should pass linting");
@@ -502,7 +502,7 @@ function main() {
     Migrate to --events commerce for a complete charging integration.
     Store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret manager.
     Restart the service after the secret sync.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(
@@ -523,7 +523,7 @@ function main() {
   const missingWebhookSecretSync = lintWebhookDesign(`
     Run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events core --save-secret --json.
     Mention a webhook signing key.
-    Verify X-Clink-Timestamp and X-Clink-Signature.
+    Verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature.
     Make processing idempotent, handle retries, and tolerate out-of-order delivery.
   `);
   check(missingWebhookSecretSync.valid === false, "webhook design without signing key sync and restart should fail linting");

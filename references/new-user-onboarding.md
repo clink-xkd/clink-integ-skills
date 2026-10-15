@@ -148,7 +148,7 @@ Use `commerce` while onboarding a complete charging or subscription integration.
 
 Endpoint ensure validates selected events against runtime `GET /webhook/events` and merges existing endpoint events by default. Use `--allow-remove-events` only when replacement and removal are explicitly intended. Stable `commerce` remains a 31-event preset; future Catalog events such as `payment_method.deleted` are available through dynamic `all` or explicit selection, not by silently changing `commerce`.
 
-`core` is compatibility-only or for a minimal demo. Its exact six events are `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`. Warning: it omits `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.failed`, and `session.expired`; migrate existing `core` endpoints to `commerce` for complete charging coverage.
+`core` is compatibility-only or for a minimal demo. Its exact six events are `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`. Warning: it omits `order.created`, `order.next_action`, `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.created`, `refund.failed`, and `session.expired`; migrate existing `core` endpoints to `commerce` for complete charging coverage.
 
 Then:
 
