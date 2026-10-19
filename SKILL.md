@@ -192,14 +192,17 @@ After drafting the answer, review it with:
 - on POSIX systems, require CLI profiles and `.env` files containing Secret Keys or webhook signing secrets to be written with mode `0600`
 - for browserless, cloud IDE, low-code, or sandbox environments where `clink login` cannot run, ask only for `CLINK_SECRET_KEY` when authentication is needed; store it with `clink auth secret set --api-key env:CLINK_SECRET_KEY --env sandbox`; do not initially ask for `CLINK_WEBHOOK_SIGNING_KEY`
 - for a complete charging or subscription integration, prefer `clink webhook endpoint ensure --url <public-webhook-url> --events commerce --save-secret --json`; a one-time checkout may use `checkout,disputes`, a subscription integration must use at least `checkout,subscriptions,disputes`, and a flow that synchronizes saved payment methods must add `payment-methods` or use `commerce`
-- treat `core` as compatibility-only or a minimal demo preset: it contains exactly `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`; warn beside every `core` example that it omits `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.failed`, and `session.expired`, then direct complete charging integrations to migrate to `commerce`
+- treat `core` as compatibility-only or a minimal demo preset: it contains exactly `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`; warn beside every `core` example that it omits `order.created`, `order.next_action`, `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.created`, `refund.failed`, and `session.expired`, then direct complete charging integrations to migrate to `commerce`
 - for cloud-hosted platforms, low-code platforms, cloud IDEs, sandbox runtimes, and similar browserless hosted environments, do not hand off a local bootstrap script for the user to copy `CLINK_WEBHOOK_SIGNING_KEY` when the agent can run `clink webhook endpoint ensure --save-secret --show-secret --json` and write platform Secrets itself
 - if the user asks for implementation and no codebase is present, identify or ask for the backend language before writing code
 - if the user asks for implementation guidance, help the coding agent decide what to build before attempting project-specific code
 - for standard integration, clarify product mode before designing checkout creation
+- for server API calls, send `X-API-Key` and a freshly generated millisecond `X-Timestamp`; production accepts roughly +/-2 minutes while sandbox is currently much more lenient
 - keep trusted local `clink checkout` commands available for operator-controlled full payloads, but make generated public checkout starters accept only server-defined `priceKey` or `planKey`; amounts, currency, product/price IDs, `merchantReferenceId`, return URLs, and payment settings remain server-authoritative
 - for Elements integration, treat Elements as a Standard Integration frontend path, not a hosted checkout page or separate top-level integration route
 - for Elements implementation, keep order creation and checkout session creation on the server, use only frontend-safe `publishKey`, `environment`, and `sessionId` in browser code, and keep webhook reconciliation authoritative
+- for Elements requests, use `returnUrl` with `{ELEMENTS_SESSION_ID}`; `redirectUrl` is a response field for action-required flows, not the request field
+- for Elements, return only the server-created `sessionId` from the merchant API; `publishKey` and `environment` come from frontend deployment configuration
 - for Elements implementation, inspect the merchant site's colors, design tokens, CSS variables, theme config, computed styles, and radius scale when available, then map them into frontend-safe Elements `presetOptions`
 - for Elements frontend-only implementation, identify or ask for the frontend framework before writing framework-specific code
 - for merchant skill for OpenClaw integration, separate merchant skill, merchant server, and Clink MCP server responsibilities
@@ -252,7 +255,11 @@ After drafting the answer, review it with:
 - do not present `clink webhook fixture` or `clink webhook simulate` as a real Clink sandbox Merchant Webhook UAT; require an actual Clink-to-endpoint sandbox delivery before claiming real webhook E2E completion
 - do not treat local fixtures, mocks, simulations, or signed replays as Clink server events
 - require webhook handlers to accept only integer second or millisecond `X-Clink-Timestamp` values within 300 seconds, verify the signature over the unmodified raw body before JSON parsing or normalization, reject malformed payloads and unknown event types with non-2xx responses, and use a durable Inbox keyed by `event.id` even within the timestamp window
-- do not assume a public refund-create API unless local docs explicitly show one
+- use the documented public refund API `POST /refund` with `refundMerchantOrderId` idempotency, query with `GET /refund/{id}` before retrying an unknown result, and reconcile `refund.created`, `refund.succeeded`, and `refund.failed` idempotently
+- subscribe to `order.created`, `order.next_action`, `order.succeeded`, and `order.failed`; model multiple Orders per Session as separate payment attempts and keep Session lifecycle separate from payment status
+- webhook verification must check `X-Clink-SignType: SHA256`, HMAC SHA-256 over the raw body, and a constant-time signature comparison in addition to timestamp freshness
+- after retry exhaustion, retain a dead-letter/outbox record and run active reconciliation before declaring an event or payment resolved
+- when an agent uses MCP, branch only on the closed `next_action` set and recover an interrupted write through the same Operation; do not blindly retry a timed-out payment
 - do not describe merchant skill integration as a plain checkout redirect flow
 - do not describe Elements as hosted checkout, and do not make modal checkout the default Elements layout
 - do not leave Elements styling on generic defaults when the merchant site's colors or design tokens are discoverable; adapt `theme`, `primaryColor`, `radius`, and skeleton behavior through `presetOptions`

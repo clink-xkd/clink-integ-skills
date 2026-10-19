@@ -140,7 +140,7 @@ async function main() {
   });
   check(mcpAgent.route === "merchant_agent_integration", "MCP agent prompt should route to merchant_agent_integration");
   check(mcpAgent.artifacts.some((item) => item.name === "payment_handoff_contract"), "MCP agent prompt should preserve payment handoff artifact");
-  check(mcpAgent.notes.some((item) => item.includes("MCP")) || mcpAgent.notes.some((item) => item.includes("Operation")), "MCP agent prompt should mention MCP recovery guidance");
+  check(!mcpAgent.artifacts.some((item) => item.name === "mcp_agent_integration"), "MCP agent prompt must not emit the retired MCP reference artifact");
 
   const docsQuestion = await runSkillRuntime({
     prompt: "Show me the public API to create a refund in Clink.",
