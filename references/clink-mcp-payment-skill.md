@@ -82,7 +82,7 @@ The operating ruleset lives on the server, not in this file:
 | Clink Direct/Session payment | `prepare_payment`, `execute_payment` |
 | Clink refund | `get_refund`, `start_refund`, `execute_refund` |
 | Clink risk rules | `get_risk_rules`, `start_risk_rules_action` |
-| Browser Pay | `get_credential`, `decrypt_credential`, `confirm_result` |
+| Browser Pay | `get_credential`, `confirm_result` |
 | Skill Marketplace | `list_tippable_skills`, `prepare_skill_tip`, `prepare_skill_tip_batch`, `execute_skill_tip`, `execute_skill_tip_batch` |
 | Shared recovery | `get_operation` |
 
@@ -187,10 +187,13 @@ The flow is `get_credential` → fill the merchant's card form → observe the m
   as minor-unit `amount` plus ISO 4217 `currency`, and optional `merchantName`,
   `merchantCountryCode`, `paymentInstrumentId`, `products`, and `shippingAddress`. Use the final
   total from the merchant page, never a list price and never the user's budget.
+- Browser Pay exposes exactly two MCP tools: `get_credential` and `confirm_result`. Decryption is
+  not a tool: it runs inside the calling platform, with the private key that matches the public key
+  Clink configured for that platform. Never send a decryption request to the MCP server.
 - The response is the Operation envelope plus `credential` when issuance succeeds. `credential.card`
-  is used exactly as returned; a `credential.key` / `credential.payload` pair is decrypted with
-  `decrypt_credential` and the platform's registered public key. Never log, store, repeat, or send
-  card fields anywhere except the merchant's own form.
+  is used exactly as returned; a `credential.key` / `credential.payload` pair is decrypted by the
+  platform's own implementation, following the decryption guide and using the key and payload
+  unchanged. Never log, store, repeat, or send card fields anywhere except the merchant's own form.
 - `SETUP_REQUIRED` / `DEFAULT_CARD` carries `wallet_cards`. Show brand and last four so the user
   chooses, then repeat `get_credential` with the same checkout facts and that `paymentInstrumentId`.
 - `REDIRECT_USER` with `actor: "USER_DEVICE_ONLY"` (`PASSKEY`, `PAYMENT_METHOD_SETUP`) is the user's own

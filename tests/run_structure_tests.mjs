@@ -296,7 +296,6 @@ const moduleExpectations = [
       "get_refund",
       "get_risk_rules",
       "get_credential",
-      "decrypt_credential",
       "confirm_result",
       "merchantUrl",
       "NOT_SUBMITTED",
@@ -678,6 +677,18 @@ check(
   `undocumented MCP endpoint api.clinkbill.dev appears in: ${endpointOffenders
     .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
     .join(", ")}`
+);
+
+const mcpContractLines = exists("references/clink-mcp-payment-skill.md")
+  ? read("references/clink-mcp-payment-skill.md").split("\n")
+  : [];
+const browserPayToolRow =
+  mcpContractLines.find((line) => line.startsWith("| Browser Pay |")) || "";
+check(browserPayToolRow.includes("`get_credential`"), "Browser Pay tool row must list get_credential");
+check(browserPayToolRow.includes("`confirm_result`"), "Browser Pay tool row must list confirm_result");
+check(
+  !browserPayToolRow.includes("`decrypt_credential`"),
+  "decrypt_credential is a platform-local helper, not an MCP tool, and must not appear in the MCP tool table"
 );
 
 if (exists("SKILL.md")) {
