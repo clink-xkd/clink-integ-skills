@@ -25,8 +25,7 @@ The payment-layer contract is not restated here. `references/clink-mcp-payment-s
 ## Environment And Connection
 
 - one `clink` MCP connection per environment, streamable HTTP, OAuth
-- sandbox -> `https://api.clinkbill.dev/mcp`
-- internal UAT -> `https://uat-api.clinkbill.com/mcp`
+- sandbox (the UAT deployment) -> `https://uat-api.clinkbill.com/mcp`
 - production -> `https://api.clinkbill.com/mcp`
 - the MCP payment skill is named `clink-payment`
 - the OpenClaw agent runtime pays only through these MCP tools; it does not shell out to a payment CLI and does not hold a customer API key

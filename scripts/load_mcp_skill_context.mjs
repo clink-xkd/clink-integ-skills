@@ -23,8 +23,11 @@ const metaPath = path.join(cacheRoot, "mcp-payment-context.meta.json");
 const vendoredContractPath = path.join(skillRoot, "references", "clink-mcp-payment-skill.md");
 
 const CONTRACT_SKILL_NAME = "clink-payment";
+// Sandbox and UAT are one deployment: the official MCP integration guide publishes them as
+// "Sandbox (UAT)", and the REST API plus CLINK_ENV=sandbox resolve to the same host. Never give
+// sandbox its own endpoint unless the official docs name one.
 const SUPPORTED_EDITIONS = {
-  sandbox: { edition: "test", endpoint: "https://api.clinkbill.dev/mcp" },
+  sandbox: { edition: "uat", endpoint: "https://uat-api.clinkbill.com/mcp" },
   uat: { edition: "uat", endpoint: "https://uat-api.clinkbill.com/mcp" },
   production: { edition: "production", endpoint: "https://api.clinkbill.com/mcp" },
 };

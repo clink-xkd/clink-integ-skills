@@ -21,13 +21,17 @@ it never restates the server contract from memory.
 
 | User-facing environment | MCP edition | Exact endpoint (also the OAuth resource and audience) |
 | --- | --- | --- |
-| sandbox | test | `https://api.clinkbill.dev/mcp` |
-| internal UAT | uat | `https://uat-api.clinkbill.com/mcp` |
+| sandbox | uat | `https://uat-api.clinkbill.com/mcp` |
 | production | production | `https://api.clinkbill.com/mcp` |
 
-Use only "sandbox" and "production" as user-facing environment terms, and do not expose "uat" or
-"prod" unless the output targets developers who need the internal mapping. Every Clink MCP request
-in one goal must go to the environment that goal was resolved to.
+Sandbox is the UAT deployment. The MCP endpoint, the REST API base
+(`https://uat-api.clinkbill.com/api/`), and `CLINK_ENV=sandbox` all resolve to that one host, which
+is what the official MCP integration guide publishes as "Sandbox (UAT)". Do not describe a separate
+sandbox or test host unless the official docs name one, and never derive an endpoint from memory.
+
+Use only "sandbox" and "production" as user-facing environment terms; the `uat` edition label is an
+internal detail of the sandbox deployment and needs no separate user-facing row. Every Clink MCP
+request in one goal must go to the environment that goal was resolved to.
 
 Before the first Clink call, verify the effective `clink` connection URL against the selected
 environment's exact endpoint, including on an already connected server. If the URL cannot be
@@ -78,6 +82,7 @@ The operating ruleset lives on the server, not in this file:
 | Clink Direct/Session payment | `prepare_payment`, `execute_payment` |
 | Clink refund | `get_refund`, `start_refund`, `execute_refund` |
 | Clink risk rules | `get_risk_rules`, `start_risk_rules_action` |
+| Browser Pay | `get_credential`, `decrypt_credential`, `confirm_result` |
 | Skill Marketplace | `list_tippable_skills`, `prepare_skill_tip`, `prepare_skill_tip_batch`, `execute_skill_tip`, `execute_skill_tip_batch` |
 | Shared recovery | `get_operation` |
 
@@ -90,6 +95,7 @@ The operating ruleset lives on the server, not in this file:
 | Sign, update, or cancel a purchase instruction | `start_instruction_action` |
 | Refund an order | `start_refund` with the order id; add minor-unit `amount` only for an explicitly requested exact partial refund |
 | Read a known historical refund | `get_refund` with the exact refund id |
+| Pay on a merchant website's own card checkout | `get_credential`, then report the observed merchant outcome with `confirm_result` |
 | Review or change spending risk rules | `get_risk_rules`; changes go through `start_risk_rules_action` |
 | Check any Operation | `get_operation` |
 
@@ -167,6 +173,52 @@ tool argument.
   confirmation's `operationId`, `actionId`, and `expectedRevision` may be submitted.
 - Execute at most once per Intent. Never retry execution to check whether it worked; read the same
   Operation instead. The server owns idempotency; never supply or regenerate a key.
+
+## Browser Pay
+
+Browser Pay pays on a merchant website's own card checkout with a single-use wallet credential. The
+merchant does not need to be registered with Clink: the agent operates the merchant site while Clink
+issues the credential and owns the wallet, the authorization, and the reported result.
+
+The flow is `get_credential` → fill the merchant's card form → observe the merchant result →
+`confirm_result`. Skip it entirely for UCP Checkout and for Direct or Session payment.
+
+- `get_credential` takes the checkout facts: `merchantUrl` (the HTTPS checkout page), the final total
+  as minor-unit `amount` plus ISO 4217 `currency`, and optional `merchantName`,
+  `merchantCountryCode`, `paymentInstrumentId`, `products`, and `shippingAddress`. Use the final
+  total from the merchant page, never a list price and never the user's budget.
+- The response is the Operation envelope plus `credential` when issuance succeeds. `credential.card`
+  is used exactly as returned; a `credential.key` / `credential.payload` pair is decrypted with
+  `decrypt_credential` and the platform's registered public key. Never log, store, repeat, or send
+  card fields anywhere except the merchant's own form.
+- `SETUP_REQUIRED` / `DEFAULT_CARD` carries `wallet_cards`. Show brand and last four so the user
+  chooses, then repeat `get_credential` with the same checkout facts and that `paymentInstrumentId`.
+- `REDIRECT_USER` with `actor: "USER_DEVICE_ONLY"` (`PASSKEY`, `PAYMENT_METHOD_SETUP`) is the user's own
+  device action: hand over `redirect_url`, then read the setup Operation with `get_operation`. Once it
+  completes, repeat `get_credential` with the original checkout facts and without the setup
+  `operationId`. Opening a link is not proof that authorization completed.
+- Credential issuance is not payment. `SUCCEEDED` on the issuing Operation only proves a credential was
+  issued, and a later `get_operation` read returns that issuance state without any credential.
+- Report the observed merchant outcome with `confirm_result`, using `orderId`,
+  `paymentExecutionDetailId`, and the issuing `operationId` from that same issuance. It records an
+  agent report: it never executes a payment and never independently verifies merchant success.
+- `outcome` is `SUCCEEDED` (the merchant explicitly confirmed), `FAILED` (the merchant showed failure
+  after submission), `NOT_SUBMITTED` (the card was never submitted; valid before clicking Pay), or
+  `UNKNOWN` (submitted, result undeterminable). Report success only on explicit merchant confirmation.
+- `paidAmount` and `currency` are optional but must be supplied together; `failureReason` is accepted
+  only with `FAILED` or `NOT_SUBMITTED`.
+- After `UNKNOWN`, inspect the existing merchant transaction and report the final outcome before
+  `report_deadline`. Repeating the same outcome is safe, a different final outcome after one is
+  recorded is refused, and the payment is never submitted again.
+- Continuation: repeating the same checkout facts before a final report returns the outstanding
+  credential, or a replacement when it expired. After a final report the same facts start a new
+  purchase. The tool has no `idempotencyKey`, so identical facts are the recovery handle.
+- Never call `confirm_result` for UCP Checkout or for a Direct or Session payment.
+- Fail closed on the documented refusals: `credential_outstanding` resolves the existing checkout
+  first, `issuance_incomplete` retries with identical facts, `credential_unavailable` separates a
+  never-submitted card (`NOT_SUBMITTED` with `CREDENTIAL_EXPIRED` or `CREDENTIAL_LOST`) from a
+  submitted one, and `result_already_reported`, `report_window_expired`, or
+  `result_reporting_unavailable` mean read, hand off, or retry the report — never pay again.
 
 ## Refunds
 

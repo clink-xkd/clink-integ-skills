@@ -19,9 +19,10 @@ The canonical protected resource is one MCP endpoint per environment, and it exp
 
 | User-facing environment | MCP edition | Exact endpoint (also the OAuth resource and audience) |
 |---|---|---|
-| sandbox | test | `https://api.clinkbill.dev/mcp` |
-| internal UAT | uat | `https://uat-api.clinkbill.com/mcp` |
+| sandbox | uat | `https://uat-api.clinkbill.com/mcp` |
 | production | production | `https://api.clinkbill.com/mcp` |
+
+Sandbox is the UAT deployment: the MCP endpoint, the REST API base (`https://uat-api.clinkbill.com/api/`), and `CLINK_ENV=sandbox` all resolve to that one host, matching the official MCP integration guide.
 
 - The Host configures exactly one `clink` MCP connection, using streamable HTTP with no API key or bearer token in configuration.
 - The installed skill is named `clink-payment` and must be installed under its own `clink-payment/` directory.

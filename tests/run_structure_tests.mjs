@@ -124,9 +124,10 @@ const moduleExpectations = [
       "execute_payment",
       "get_operation",
       "https://api.clinkbill.com/mcp",
-      "https://api.clinkbill.dev/mcp"
+      "https://uat-api.clinkbill.com/mcp"
     ],
     notContains: [
+      "https://api.clinkbill.dev",
       "agentic-payment-skills",
       "openclaw-payment-skills",
       "clink-payment-skill",
@@ -147,9 +148,10 @@ const moduleExpectations = [
       "execute_payment",
       "get_operation",
       "https://api.clinkbill.com/mcp",
-      "https://api.clinkbill.dev/mcp"
+      "https://uat-api.clinkbill.com/mcp"
     ],
     notContains: [
+      "https://api.clinkbill.dev",
       "agentic-payment-skills",
       "openclaw-payment-skills",
       "clink-payment-skill",
@@ -273,7 +275,6 @@ const moduleExpectations = [
       "Clink MCP",
       "clink-payment",
       "https://api.clinkbill.com/mcp",
-      "https://api.clinkbill.dev/mcp",
       "https://uat-api.clinkbill.com/mcp",
       "clink://skill/rules",
       "get_skill_manifest",
@@ -294,6 +295,11 @@ const moduleExpectations = [
       "execute_refund",
       "get_refund",
       "get_risk_rules",
+      "get_credential",
+      "decrypt_credential",
+      "confirm_result",
+      "merchantUrl",
+      "NOT_SUBMITTED",
       "get_operation",
       "next_action",
       "PROVIDE_INPUT",
@@ -659,6 +665,20 @@ for (const file of requiredFiles) {
 for (const file of collectTextFiles(repoRoot)) {
   check(!hasUtf8Bom(file), `text file must not start with UTF-8 BOM: ${path.relative(repoRoot, file).replace(/\\/g, "/")}`);
 }
+
+const undocumentedMcpEndpoints = ["api.clinkbill.dev"];
+const endpointOffenders = collectTextFiles(repoRoot).filter((file) => {
+  // This file must spell the forbidden host to forbid it, so it is not part of the scan.
+  if (path.relative(repoRoot, file) === path.join("tests", "run_structure_tests.mjs")) return false;
+  const contents = fs.readFileSync(file, "utf8");
+  return undocumentedMcpEndpoints.some((host) => contents.includes(host));
+});
+check(
+  endpointOffenders.length === 0,
+  `undocumented MCP endpoint api.clinkbill.dev appears in: ${endpointOffenders
+    .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
+    .join(", ")}`
+);
 
 if (exists("SKILL.md")) {
   const skillBytes = fs.readFileSync(path.join(repoRoot, "SKILL.md"));

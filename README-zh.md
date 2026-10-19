@@ -19,9 +19,10 @@
 
 | 用户可见环境 | MCP edition | 精确 endpoint（同时是 OAuth resource 与 audience） |
 |---|---|---|
-| sandbox | test | `https://api.clinkbill.dev/mcp` |
-| 内部 UAT | uat | `https://uat-api.clinkbill.com/mcp` |
+| sandbox | uat | `https://uat-api.clinkbill.com/mcp` |
 | production | production | `https://api.clinkbill.com/mcp` |
+
+sandbox 就是 UAT 部署：MCP endpoint、REST API base（`https://uat-api.clinkbill.com/api/`）和 `CLINK_ENV=sandbox` 都指向同一个 host，与官方 MCP 集成文档的 "Sandbox (UAT)" 一致。
 
 - Host 只配置一个 `clink` MCP 连接，使用 streamable HTTP，配置里不写 API key 或 bearer token。
 - 安装的 skill 名为 `clink-payment`，必须放在自己的 `clink-payment/` 目录下。

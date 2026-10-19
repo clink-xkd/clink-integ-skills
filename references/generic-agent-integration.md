@@ -24,7 +24,7 @@ The payment layer of this path is the Clink MCP server. There is no local CLI pa
 Connection facts the integration design depends on:
 
 - one `clink` MCP connection per environment, streamable HTTP, authenticated by OAuth
-- endpoints: sandbox `https://api.clinkbill.dev/mcp`, internal UAT `https://uat-api.clinkbill.com/mcp`, production `https://api.clinkbill.com/mcp`
+- endpoints: sandbox `https://uat-api.clinkbill.com/mcp` (the UAT deployment), production `https://api.clinkbill.com/mcp`
 - the authoritative operating ruleset is the MCP resource `clink://skill/rules`, or `get_skill_manifest` with `include_rules: true` when the Host cannot read MCP resources
 - the server rules supersede any locally installed skill text, and a live `next_action` supersedes a static description of what to do next
 
