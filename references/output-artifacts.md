@@ -58,13 +58,13 @@ A strong merchant skill for OpenClaw integration output should usually include:
 - payment handoff contract skeleton
 - merchant confirmation checklist
 - recovery and resume checklist
-- `openclaw-payment-skills` dependency and ownership notes
+- `clink-payment` MCP dependency and ownership notes
 
 ## Merchant Skill for Generic Agent Integration Artifacts
 
 A strong merchant skill for generic agent integration output should usually include:
 
-- agentic-payment-skills dependency checklist
+- Clink MCP dependency checklist
 - merchant skill or merchant tool responsibility checklist
 - generic agent adapter checklist
 - runtime contract assumptions
@@ -73,7 +73,18 @@ A strong merchant skill for generic agent integration output should usually incl
 - callback and resume design
 - merchant confirmation checklist
 - idempotency and duplicate-delivery rules
-- ownership matrix for merchant skill or tool, agent runtime, adapter, merchant server, and `agentic-payment-skills`
+- ownership matrix for merchant skill or tool, agent runtime, adapter, merchant server, and the `clink` MCP server
+
+## Clink MCP Agent Artifacts
+
+When UCP, Wallet, Browser Pay, or MCP OAuth is in scope, also produce:
+
+- MCP endpoint and OAuth/PKCE registration checklist
+- per-user token storage and scope matrix
+- Wallet and purchase-instruction action map
+- UCP Checkout and digital-delivery flow
+- Browser Pay credential, merchant-observation, and `confirm_result` contract
+- Operation and `next_action` recovery matrix with fail-closed timeout handling
 
 ## Validation Artifacts
 

@@ -17,7 +17,7 @@ const WEBHOOK_VALIDATION_INPUT = [
   "We will run clink webhook endpoint ensure --url https://example.com/api/clink/webhook --events commerce --save-secret --json.",
   "We will store and sync the returned webhook signing key as CLINK_WEBHOOK_SIGNING_KEY in the platform Secret or secret manager.",
   "We will restart or redeploy the service after the secret sync.",
-  "We will verify X-Clink-Timestamp and X-Clink-Signature, implement idempotency, retries, and out-of-order handling.",
+  "We will verify X-Clink-SignType: SHA256, X-Clink-Timestamp and X-Clink-Signature, implement idempotency, retries, and out-of-order handling.",
 ].join(" ");
 
 function check(condition, message) {
@@ -134,13 +134,21 @@ async function main() {
   check(agent.route === "merchant_agent_integration", "agent prompt should route to merchant_agent_integration");
   check(agent.artifacts.some((item) => item.name === "payment_handoff_contract"), "agent route should emit payment_handoff_contract artifact");
 
+  const mcpAgent = await runSkillRuntime({
+    prompt: "Connect Clink MCP with OAuth PKCE and design a UCP Checkout using Wallet and Browser Pay recovery.",
+    docsFallbackSource: docsFallback,
+  });
+  check(mcpAgent.route === "merchant_agent_integration", "MCP agent prompt should route to merchant_agent_integration");
+  check(mcpAgent.artifacts.some((item) => item.name === "payment_handoff_contract"), "MCP agent prompt should preserve payment handoff artifact");
+  check(!mcpAgent.artifacts.some((item) => item.name === "mcp_agent_integration"), "MCP agent prompt must not emit the retired MCP reference artifact");
+
   const docsQuestion = await runSkillRuntime({
     prompt: "Show me the public API to create a refund in Clink.",
     docsFallbackSource: docsFallback,
   });
   check(docsQuestion.docsGateInvoked === true, "docs question should invoke docs gate");
   check(["fallback", "refresh", "cache", "stale-cache"].includes(docsQuestion.docsTrace.action), "docs question should produce docs trace");
-  check(docsQuestion.notes.some((item) => item.includes("refund-create API")), "docs question should warn that refund-create API is not confirmed");
+  check(docsQuestion.notes.some((item) => item.includes("refund-create API")) || docsQuestion.notes.some((item) => item.includes("POST /refund")), "docs question should report the documented refund-create API");
   check(docsQuestion.route === "documentation_dialogue", "public API question should route to documentation_dialogue");
 
   const onboarding = await runSkillRuntime({
@@ -207,7 +215,7 @@ async function main() {
     docsFallbackSource: docsFallback,
   });
   check(refundLifecycle.docsGateInvoked === true, "refund lifecycle prompt should invoke docs gate");
-  check(refundLifecycle.notes.some((item) => item.includes("refund-create API")), "refund lifecycle prompt should warn when public refund-create API is unconfirmed");
+  check(refundLifecycle.notes.some((item) => item.includes("POST /refund")) || refundLifecycle.notes.some((item) => item.includes("refund-create API")), "refund lifecycle prompt should preserve the documented refund-create API note");
   checkEndpointEnsureEvents(refundLifecycle, "checkout,disputes", "refund lifecycle");
 
   const subscriptionBilling = await runSkillRuntime({
@@ -266,7 +274,7 @@ async function main() {
   for (const eventName of ["session.complete", "order.succeeded", "order.failed", "refund.succeeded", "subscription.created", "invoice.paid"]) {
     check(compatibilityArtifact?.summary?.includes(eventName), `core compatibility artifact should list ${eventName}`);
   }
-  for (const riskName of ["subscription.cancelled", "subscription.past_due", "subscription.updated.*", "invoice.open/void", "dispute.*", "refund.failed", "session.expired"]) {
+  for (const riskName of ["order.created", "order.next_action", "subscription.cancelled", "subscription.past_due", "subscription.updated.*", "invoice.open/void", "dispute.*", "refund.created", "refund.failed", "session.expired"]) {
     check(compatibilityArtifact?.summary?.includes(riskName), `core compatibility artifact should warn about omitted ${riskName}`);
   }
   check(compatibilityArtifact?.summary?.includes("exactly 6 events"), "core compatibility artifact should state the exact six-event count");
@@ -280,12 +288,40 @@ async function main() {
   checkEndpointEnsureEvents(productionCompatibility, "commerce", "production subscription with backward compatibility");
 
   const genericAgent = await runSkillRuntime({
-    prompt: "Design a generic non-OpenClaw agent integration using agentic-payment-skills, clink-payment-skill, and clink-cli.",
+    prompt: "Design a generic non-OpenClaw agent integration where the merchant skill hands payment to the agent runtime through the clink-payment skill and Clink MCP, with an adapter and a payment handoff contract.",
     docsFallbackSource: docsFallback,
   });
-  check(genericAgent.route === "merchant_agent_integration", "generic agentic payment prompt should route to merchant_agent_integration");
-  check(genericAgent.artifacts.some((item) => item.name === "payment_handoff_contract"), "generic agentic payment prompt should emit payment_handoff_contract");
-  check(genericAgent.artifacts.some((item) => item.name === "ownership_matrix"), "generic agentic payment prompt should emit ownership_matrix");
+  check(genericAgent.route === "merchant_agent_integration", "generic agent payment prompt should route to merchant_agent_integration");
+  check(genericAgent.artifacts.some((item) => item.name === "payment_handoff_contract"), "generic agent payment prompt should emit payment_handoff_contract");
+  check(genericAgent.artifacts.some((item) => item.name === "ownership_matrix"), "generic agent payment prompt should emit ownership_matrix");
+  check(
+    genericAgent.notes.every((item) => !item.includes("load_payment_skill_contexts")),
+    "agent payment prompts must not recommend the retired CLI context loader"
+  );
+
+  const genericAgentMcp = await runSkillRuntime({
+    prompt: "Design a generic agent integration where the agent runtime pays through the Clink MCP server, reading clink://skill/rules and using prepare_payment, execute_payment, and get_operation.",
+    docsFallbackSource: docsFallback,
+  });
+  check(genericAgentMcp.route === "merchant_agent_integration", "Clink MCP payment prompt should route to merchant_agent_integration");
+  check(
+    genericAgentMcp.artifacts.some((item) => item.name === "payment_handoff_contract"),
+    "Clink MCP payment prompt should emit payment_handoff_contract"
+  );
+  check(
+    genericAgentMcp.artifacts.some((item) => item.name === "ownership_matrix"),
+    "Clink MCP payment prompt should emit ownership_matrix"
+  );
+
+  const openClawMcp = await runSkillRuntime({
+    prompt: "Design an OpenClaw merchant skill that hands payment to the Clink MCP server over a merchant session and resumes the task after customer.verify.",
+    docsFallbackSource: docsFallback,
+  });
+  check(openClawMcp.route === "merchant_agent_integration", "OpenClaw merchant skill prompt over Clink MCP should route to merchant_agent_integration");
+  check(
+    openClawMcp.artifacts.some((item) => item.name === "payment_handoff_contract"),
+    "OpenClaw Clink MCP prompt should emit payment_handoff_contract"
+  );
 
   const dashboardFallbackReview = await runSkillRuntime({
     prompt: "Review this webhook setup: we will copy the signing key from Merchant Dashboard > Developers > Webhooks.",

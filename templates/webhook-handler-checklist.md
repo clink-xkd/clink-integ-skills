@@ -7,7 +7,7 @@
 - Narrow scope only when the product flow is known: `checkout,disputes` for one-time checkout; at least `checkout,subscriptions,disputes` for subscriptions; add `payment-methods` when saved payment methods must be synchronized
 - Confirm ensure validates against runtime `GET /webhook/events` and merges existing endpoint events by default; use `--allow-remove-events` only for an explicitly authorized replacement
 - Treat stable `commerce` as 31 events; do not let a future Catalog event such as `payment_method.deleted` silently enter it (use dynamic `all` or an explicit event instead)
-- Treat `core` as compatibility-only/minimal-demo: its exact six events are `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`; warn that it omits `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.failed`, and `session.expired`, and migrate complete charging integrations to `commerce`
+- Treat `core` as compatibility-only/minimal-demo: its exact six events are `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`; warn that it omits `order.created`, `order.next_action`, `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.created`, `refund.failed`, and `session.expired`, and migrate complete charging integrations to `commerce`
 - Sync the returned or rotated signing key into the merchant runtime as `CLINK_WEBHOOK_SIGNING_KEY`
 - Restart or redeploy the service after syncing the signing key
 - Accept `X-Clink-Timestamp` only as integer Unix seconds or milliseconds within 300 seconds of current time

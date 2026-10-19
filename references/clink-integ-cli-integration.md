@@ -246,6 +246,32 @@ Keep `merchantReferenceId` as a reconciliation field only. Do not treat it as a 
 
 If the product is subscription-based, design whether the user should create a new checkout, create a subscription, or use a customer portal path.
 
+The same Secret Key API path can call the documented merchant routes that do not have a
+dedicated CLI shortcut: `POST /payment` for a server-created one-time payment,
+`POST /subscription` for an existing customer/payment instrument, and `POST /billing/session`
+for Customer Portal. Send `X-API-Key` and a fresh millisecond `X-Timestamp` on every request.
+Production timestamps are accepted only within roughly two minutes of platform time; sandbox is
+currently more lenient, but never reuse an old timestamp.
+
+### Refund API
+
+The public refund API is now documented. Create a refund with `POST /refund`:
+
+```json
+{
+  "orderId": "order_xxxxx",
+  "refundMerchantOrderId": "refund_ref_10001",
+  "refundAmount": 19.99,
+  "refundReasonType": 2,
+  "remark": "Customer requested refund"
+}
+```
+
+`orderId`, `refundMerchantOrderId`, and `refundAmount` are required. Reusing the same
+`refundMerchantOrderId` returns the existing refund, so use it as the merchant idempotency key.
+Read the record with `GET /refund/{id}` before retrying an ambiguous request. Reconcile
+`refund.created`, `refund.succeeded`, and `refund.failed` webhooks idempotently.
+
 ## Webhook Endpoint Automation
 
 Webhook endpoint management is Secret Key API-compatible through `clink-integ-cli`.
@@ -292,7 +318,7 @@ Endpoint ensure reads runtime `GET /webhook/events` and validates every preset o
 - `subscription.created`
 - `invoice.paid`
 
-Warning: `core` omits `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.failed`, and `session.expired`. It is not a complete charging, subscription, or production recommendation. Migrate existing `core` endpoints to `commerce` for complete coverage.
+Warning: `core` omits `order.created`, `order.next_action`, `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.created`, `refund.failed`, and `session.expired`. It is not a complete charging, subscription, or production recommendation. Migrate existing `core` endpoints to `commerce` for complete coverage.
 
 The CLI compatibility alias `clink dashboard webhook ensure` may exist for older scripts, but new guidance should use `clink webhook endpoint ensure`.
 

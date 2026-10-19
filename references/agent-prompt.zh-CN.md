@@ -73,7 +73,7 @@ clink webhook endpoint ensure \
 
 完整收费/订阅默认使用 `commerce`；仅一次性 Checkout 使用 `checkout,disputes`；订阅最低集合是 `checkout,subscriptions,disputes`；需要同步保存的支付方式时增加 `payment-methods` 或使用 `commerce`。`ensure` 会用运行时 `GET /webhook/events` 校验事件并默认合并已有集合；只有明确允许替换和删除时才使用 `--allow-remove-events`。稳定 `commerce` 固定为 31 个事件，未来的 `payment_method.deleted` 只能通过动态 `all` 或显式事件使用。
 
-`core` 只用于向后兼容/最小演示，固定六个事件：`session.complete`、`order.succeeded`、`order.failed`、`refund.succeeded`、`subscription.created`、`invoice.paid`。警告：它遗漏 `subscription.cancelled`、`subscription.past_due`、`subscription.updated.*`、`invoice.open/void`、`dispute.*`、`refund.failed` 和 `session.expired`；完整收费接入必须迁移到 `commerce`。`--save-secret` 会把 signing key 保存到 CLI profile；需要写入外部平台 Secret 时才使用 `--show-secret` 读取明文。
+`core` 只用于向后兼容/最小演示，固定六个事件：`session.complete`、`order.succeeded`、`order.failed`、`refund.succeeded`、`subscription.created`、`invoice.paid`。警告：它遗漏 `order.created`、`order.next_action`、`subscription.cancelled`、`subscription.past_due`、`subscription.updated.*`、`invoice.open/void`、`dispute.*`、`refund.created`、`refund.failed` 和 `session.expired`；完整收费接入必须迁移到 `commerce`。`--save-secret` 会把 signing key 保存到 CLI profile；需要写入外部平台 Secret 时才使用 `--show-secret` 读取明文。
 
 如果普通安装拿到的 CLI 过旧，不支持 `auth secret set`，请重新安装/更新最新 CLI 后再继续。不要因为旧 CLI 缺少能力就直接把 webhook 配置交给用户。
 

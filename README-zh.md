@@ -2,11 +2,44 @@
 
 [English](README.md) | 简体中文
 
-`clink-integ-skills` 是一个给 coding agent 使用的 ClinkBill 支付接入 skill。当前版本已经切到 CLI-first：agent 应优先使用 `clink-integ-cli`、Secret Key 身份验证、商品目录导入、checkout 或 subscription API、webhook endpoint 自动配置、webhook 签名校验和 sandbox 验证来完成接入。
+`clink-integ-skills` 是一个给 coding agent 使用的 ClinkBill 支付接入 skill。它覆盖两层，两层的机制不同：
+
+| 层 | 做什么 | 机制 |
+|---|---|---|
+| 商户接入 | 商户自己的后端能收款：Secret Key、商品目录导入、checkout/subscription session、webhook endpoint 与验签、sandbox 验证 | 内置离线 `clink-integ-cli` + 官方 REST API 与 JavaScript SDK |
+| agent 支付能力 | 商户 skill 让终端用户的 agent 具备支付、退款、钱包设置的能力 | **只走 Clink MCP server** |
+
+支付层是 **MCP only**：没有需要安装的支付 CLI，没有进程退出码要解析，也不持有 customer API key。agent 运行时连接 `clink` MCP server，通过它的工具完成支付。该层的契约在 `references/clink-mcp-payment-skill.md`。
 
 这个仓库既是可安装的 skill，也是可以发给 agent 的提示词包。`agents/openai.yaml` 里有默认提示词，`references/agent-prompt.zh-CN.md` 和 `references/universal-agent-prompt.zh-CN.md` 里有更完整的中文提示词参考。
 
-## 当前接入模型
+## agent 支付能力：只走 Clink MCP
+
+每个环境一个 MCP endpoint，同一次连接里同时暴露 Catalog、UCP Commerce、Clink 账户/支付和 Skill Marketplace 工具集：
+
+| 用户可见环境 | MCP edition | 精确 endpoint（同时是 OAuth resource 与 audience） |
+|---|---|---|
+| sandbox | uat | `https://uat-api.clinkbill.com/mcp` |
+| production | production | `https://api.clinkbill.com/mcp` |
+
+sandbox 就是 UAT 部署：MCP endpoint、REST API base（`https://uat-api.clinkbill.com/api/`）和 `CLINK_ENV=sandbox` 都指向同一个 host，与官方 MCP 集成文档的 "Sandbox (UAT)" 一致。
+
+- Host 只配置一个 `clink` MCP 连接，使用 streamable HTTP，配置里不写 API key 或 bearer token。
+- 安装的 skill 名为 `clink-payment`，必须放在自己的 `clink-payment/` 目录下。
+- 权威规则是服务端资源 `clink://skill/rules`；Host 无法读 MCP resource 时用 `get_skill_manifest` 的 `include_rules: true`。服务端规则**优先于**任何本地 skill 文本，因此服务端发版就能更新行为，不需要重装 skill。
+- 每个 Operation 带一个 `next_action`，其 `type` 是封闭集合：`PROVIDE_INPUT`、`CONFIRM`、`REDIRECT_USER`、`SETUP_REQUIRED`、`POLL_OPERATION`、`WAIT_OPERATION`、`CONTACT_SUPPORT`。没有 `next_action` 就代表 Operation 已终态。
+- 支付路径是 `prepare_payment`（`direct` 或 `session` 模式）→ 用户确认 `CONFIRM` → 一次 `execute_payment`。退款是 `start_refund` → `CONFIRM` → `execute_refund`，再用 `get_refund` 读权威状态。
+- `get_operation` 是超时或重启后**唯一**的恢复路径；超时代表状态未知，不是失败。一个 goal 只保留一个进行中的 Operation。
+
+该层的本地设计辅助：
+
+```bash
+node scripts/load_mcp_skill_context.mjs --print-path
+```
+
+解析优先级为 `CLINK_MCP_RULES_PATH`（导出的 `clink://skill/rules` 快照）→ `CLINK_MCP_SKILL_PATH`（本地 `clink-payment/SKILL.md`）→ 内置 `references/clink-mcp-payment-skill.md`。它只是设计辅助，永远不是运行时权威。
+
+## 当前商户接入模型
 
 正常接入在配置好 Secret Key 后不再需要 Dashboard Console token。
 
@@ -55,13 +88,13 @@ clink webhook endpoint ensure \
 
 完整收费或订阅接入使用 `commerce`。仅一次性 Checkout 可以使用 `checkout,disputes`；订阅接入至少使用 `checkout,subscriptions,disputes`；如果还要同步保存的支付方式，在组合中加入 `payment-methods`，或继续使用 `commerce`。
 
-`core` 只用于向后兼容或最小演示。它固定只有 `session.complete`、`order.succeeded`、`order.failed`、`refund.succeeded`、`subscription.created`、`invoice.paid` 六个事件，会遗漏 `subscription.cancelled`、`subscription.past_due`、`subscription.updated.*`、`invoice.open/void`、`dispute.*`、`refund.failed` 和 `session.expired`；已有 `core` endpoint 应迁移到 `commerce`，才能覆盖完整收费生命周期。
+`core` 只用于向后兼容或最小演示。它固定只有 `session.complete`、`order.succeeded`、`order.failed`、`refund.succeeded`、`subscription.created`、`invoice.paid` 六个事件，会遗漏 `order.created`、`order.next_action`、`subscription.cancelled`、`subscription.past_due`、`subscription.updated.*`、`invoice.open/void`、`dispute.*`、`refund.created`、`refund.failed` 和 `session.expired`；已有 `core` endpoint 应迁移到 `commerce`，才能覆盖完整收费生命周期。
 
 Endpoint ensure 会先用运行时 `GET /webhook/events` 校验所选事件，并默认合并 endpoint 已有事件。只有明确要替换集合并删除已有事件时才使用 `--allow-remove-events`。版本化的 `commerce` 固定为 31 个事件；未来 Catalog 中即使出现 `payment_method.deleted`，也只能通过动态 `all` 或显式事件选择使用，不能让稳定预设静默扩容。
 
-执行 `--save-secret` 后，agent 必须把返回或轮换后的 signing secret 同步到项目运行环境的 `CLINK_WEBHOOK_SIGNING_KEY`，然后重启或重新部署服务。webhook URL 每次变化都要重新运行 `ensure` 并重新同步密钥。
+执行 `--save-secret` 后，agent 必须把返回或轮换后的 signing secret 同步到项目运行环境的 `CLINK_WEBHOOK_SIGNING_KEY`，然后重启或重新部署服务。webhook URL 每次变化都要重新运行 `ensure` 并重新同步密钥。API 请求使用 `X-API-Key` 和即时生成的毫秒级 `X-Timestamp`；生产环境约接受 +/-2 分钟，sandbox 当前更宽松。
 
-默认本地 Merchant Webhook fixture 使用 `event_` ID、`object: "event"`、Unix 毫秒整数 `created`、对象形式的 `data.object`、Invoice `items`，且不带外层 `livemode`。摊平的 `--fixture-profile legacy` 结构已经 deprecated，只能显式选择。`clink webhook fixture` 和 `clink webhook simulate` 只是本地验证工具，不是 Clink 服务端真实事件，也不能证明真实 Clink sandbox Merchant Webhook UAT 已通过。Handler 只接受与当前时间相差不超过 300 秒的整数秒或毫秒 `X-Clink-Timestamp`，并且必须先对未经修改的 raw body 验签，再做 JSON 解析；非法载荷或未知事件必须返回非 2xx，即使时间戳仍在窗口内也必须使用按 `event.id` 持久化的 Inbox 去重。
+默认本地 Merchant Webhook fixture 使用 `event_` ID、`object: "event"`、Unix 毫秒整数 `created`、对象形式的 `data.object`、Invoice `items`，且不带外层 `livemode`。摊平的 `--fixture-profile legacy` 结构已经 deprecated，只能显式选择。`clink webhook fixture` 和 `clink webhook simulate` 只是本地验证工具，不是 Clink 服务端真实事件，也不能证明真实 Clink sandbox Merchant Webhook UAT 已通过。Handler 只接受与当前时间相差不超过 300 秒的整数秒或毫秒 `X-Clink-Timestamp`，并且必须先对未经修改的 raw body 验签，再做 JSON 解析；同时检查 `X-Clink-SignType: SHA256`，使用 HMAC SHA-256 和恒定时间比较。订阅 `order.created`、`order.next_action`、`order.succeeded`、`order.failed`，按 Session 分开保存多次支付尝试；重试耗尽后保留 dead-letter/outbox 并主动对账。非法载荷或未知事件必须返回非 2xx，即使时间戳仍在窗口内也必须使用按 `event.id` 持久化的 Inbox 去重。
 
 ## Skill 能力
 
@@ -70,11 +103,12 @@ Endpoint ensure 会先用运行时 `GET /webhook/events` 校验所选事件，�
 - 扫描目标项目或网站里的付费产品、价格、订阅计划和计费周期
 - 生成确定性的 `clink-catalog.json`，每个 product 带 `imageId`、`imageUrl` 或 `imageFile`
 - 使用 `clink catalog validate`、`clink catalog plan`、`clink catalog import` 校验、预览并导入商品目录
-- 设计服务端 checkout 和 subscription 路由
+- 设计服务端 checkout、payment、subscription 和 refund 路由（包括 `POST /refund`）
 - 使用 `clink webhook endpoint ensure` 自动配置 webhook endpoint
 - 实现 raw body webhook 签名校验、`merchantReferenceId` + `sessionId` 双重匹配、幂等、重试安全和乱序容忍
 - 通过 `@clink-ai/clink-elements` 指导 Elements embedded checkout
-- 设计通用 agent 与 OpenClaw merchant skill 支付 handoff
+- 通过 Clink MCP server 提供 agent 支付能力：`clink` 连接、`clink://skill/rules`、封闭的 `next_action` 集合、purchase instruction、direct/session 支付、退款和 Operation 恢复
+- 基于 Clink MCP server 设计通用 agent 与 OpenClaw merchant skill 支付 handoff
 - 生成 review、校验报告和开发交接 checklist
 
 商品扫描由 agent 在商户项目中完成。CLI 负责校验、预览、导入以及维护 Clink 侧资源。
@@ -84,10 +118,10 @@ Endpoint ensure 会先用运行时 `GET /webhook/events` 校验所选事件，�
 可以直接使用这个短提示词：
 
 ```text
-Use $clink-integ-skills to integrate ClinkBill payments into this project with clink-integ-cli, Secret Key setup, product catalog import, checkout/subscription APIs, webhook endpoint automation, and sandbox validation.
+Use $clink-integ-skills to integrate ClinkBill payments into this project with clink-integ-cli, Secret Key setup, product catalog import, checkout/subscription APIs, webhook endpoint automation, and sandbox validation. For any agent-side payment capability, connect the Clink MCP server and follow clink://skill/rules.
 ```
 
-skill 本身会指导 agent 根据任务读取标准接入、onboarding、校验、Elements、通用 agent payment skill 和 OpenClaw payment skill 的对应 reference。
+skill 本身会指导 agent 根据任务读取标准接入、onboarding、校验、Elements、MCP、通用 agent payment skill 和 OpenClaw payment skill 的对应 reference。
 
 ## 安装
 
@@ -113,8 +147,11 @@ skill 本身默认不需要额外安装运行时依赖。
 |---|---|
 | `SKILL.md` | 主路由规则和硬约束 |
 | `agents/openai.yaml` | Agent UI 元信息和默认提示词 |
-| `references/clink-integ-cli-integration.md` | CLI-first Secret Key、商品目录、checkout、webhook、sandbox 工作流 |
+| `references/clink-integ-cli-integration.md` | 商户侧 Secret Key、商品目录、checkout、webhook、sandbox 工作流 |
 | `references/standard-integration.md` | 标准 Clink 接入工作流 |
+| `references/clink-mcp-payment-skill.md` | 本 skill 依赖的 Clink MCP 支付契约 |
+| `references/agent-integration.md` | OpenClaw merchant skill 通过 Clink MCP server 接入 |
+| `references/generic-agent-integration.md` | 通用（非 OpenClaw）agent 运行时通过 Clink MCP server 接入 |
 | `references/new-user-onboarding.md` | 新用户 onboarding 和首次 sandbox checkout 工作流 |
 | `references/agent-prompt.zh-CN.md` | 中文 agent 提示词参考 |
 | `references/universal-agent-prompt.zh-CN.md` | 通用中文 agent 提示词参考 |
@@ -134,6 +171,7 @@ npm run test:runtime
 npm run test:contracts
 node scripts/run_skill_runtime.mjs --prompt "Integrate Clink checkout and webhooks" --json
 node scripts/generate_guidance_artifacts.mjs --prompt "Design a Clink webhook integration"
+node scripts/load_mcp_skill_context.mjs --print-path
 ```
 
 维护文档相关能力时，使用 docs gate：
@@ -147,8 +185,8 @@ node scripts/load_official_docs.mjs --json
 ## 兼容性
 
 - Codex 风格 modular skills
-- OpenClaw merchant skill 流程
-- 通用 agent payment skill 流程
+- OpenClaw merchant skill 流程（基于 Clink MCP server）
+- 通用 agent 运行时流程（基于 Clink MCP server）
 
 ## License
 

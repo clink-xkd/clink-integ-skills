@@ -1,4 +1,4 @@
 interface:
   display_name: "Clink Integration"
-  short_description: "Integrate ClinkBill payments with clink-integ-cli, Secret Key setup, catalog image imports, checkout, subscriptions, webhooks, and sandbox validation."
-  default_prompt: "Use $clink-integ-skills to integrate ClinkBill payments into this project with clink-integ-cli, Secret Key setup, product catalog import with imageId/imageUrl/imageFile, checkout/subscription APIs, webhook endpoint automation, and sandbox validation."
+  short_description: "Integrate ClinkBill payments with clink-integ-cli, Secret Key setup, catalog image imports, checkout, subscriptions, webhooks, sandbox validation, and the Clink MCP agent payment capability."
+  default_prompt: "Use $clink-integ-skills to integrate ClinkBill payments into this project with clink-integ-cli, Secret Key setup, product catalog import with imageId/imageUrl/imageFile, checkout/subscription APIs, webhook endpoint automation, sandbox validation, and Clink MCP server payment handoff for agent runtimes."

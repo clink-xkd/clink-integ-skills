@@ -99,12 +99,12 @@
       "prompt": "Help me design the refund part of my Clink integration.",
       "must_include": [
         ["refund lifecycle", "modeled as a lifecycle", "refunds are modeled as a lifecycle", "designed as a lifecycle", "lifecycle rather than a single api call"],
-        ["dashboard-issued refunds", "processed through the clink dashboard", "refunds are initiated through the clink dashboard", "manual process performed through the clink dashboard", "managed through the merchant dashboard", "initiated manually through the clink dashboard"],
+        ["POST /refund", "refundMerchantOrderId", "dashboard-issued refunds", "processed through the clink dashboard", "refunds are initiated through the clink dashboard", "manual process performed through the clink dashboard", "managed through the merchant dashboard", "initiated manually through the clink dashboard"],
         ["refund querying", "get /refund/{id}", "retrieve details for an existing refund", "querying"],
         ["insufficient balance", "sufficient funds", "balance is insufficient", "refund requests will be rejected if the balance is insufficient"]
       ],
       "must_not_include": [
-        "public refund-create API"
+        "docs do not confirm a public refund-create API"
       ]
     },
     {
@@ -199,7 +199,7 @@
       "scenario": "merchant_standard_integration",
       "prompt": "Show me the public API to create a refund in Clink.",
       "must_include": [
-        ["not confirmed", "there is no public api", "there is no confirmed public api", "no public api", "cannot create a refund via api", "manual process performed through the clink dashboard"]
+        ["POST /refund", "public refund-create API", "refundMerchantOrderId"]
       ],
       "must_not_include": [
         "invented endpoint names",

@@ -15,7 +15,7 @@ const requiredFiles = [
   "agents/openai.yaml",
   "scripts/refresh_official_docs.mjs",
   "scripts/load_official_docs.mjs",
-  "scripts/load_payment_skill_contexts.mjs",
+  "scripts/load_mcp_skill_context.mjs",
   "scripts/lint_contract.mjs",
   "scripts/lint_webhook_design.mjs",
   "scripts/generate_guidance_artifacts.mjs",
@@ -34,6 +34,7 @@ const requiredFiles = [
   "references/elements-integration.md",
   "references/agent-integration.md",
   "references/generic-agent-integration.md",
+  "references/clink-mcp-payment-skill.md",
   "references/output-artifacts.md",
   "references/validation-workflow.md",
   "references/review-checklist.md",
@@ -81,14 +82,12 @@ const moduleExpectations = [
       "new user onboarding",
       "merchant skill for generic agent integration",
       "merchant skill for OpenClaw integration",
-      "openclaw-payment-skills",
-      "agentic-payment-skills",
       "Clink documentation-backed guidance",
       "Integration Validation",
       "merchantReferenceId",
       "customer.verify",
       "node scripts/load_official_docs.mjs",
-      "node scripts/load_payment_skill_contexts.mjs",
+      "node scripts/load_mcp_skill_context.mjs",
       "references/new-user-onboarding.md",
       "references/clink-integ-cli-integration.md",
       "references/elements-integration.md",
@@ -97,11 +96,68 @@ const moduleExpectations = [
       "amount-change",
       "computed styles",
       "presetOptions",
-      "--dependency openclaw-payment-skills",
-      "--dependency agentic-payment-skills",
+      "references/clink-mcp-payment-skill.md",
+      "clink://skill/rules",
       "guidance artifacts",
       "sandbox",
       "production"
+    ],
+    notContains: [
+      "openclaw-payment-skills",
+      "agentic-payment-skills",
+      "clink-payment-skill",
+      "clink-cli",
+      "legacy_cli",
+      "customerApiKey",
+      "CLINK_CUSTOMER_API_KEY"
+    ]
+  },
+  {
+    file: "README.md",
+    contains: [
+      "Clink MCP",
+      "clink-integ-cli",
+      "clink://skill/rules",
+      "clink-payment",
+      "next_action",
+      "prepare_payment",
+      "execute_payment",
+      "get_operation",
+      "https://api.clinkbill.com/mcp",
+      "https://uat-api.clinkbill.com/mcp"
+    ],
+    notContains: [
+      "https://api.clinkbill.dev",
+      "agentic-payment-skills",
+      "openclaw-payment-skills",
+      "clink-payment-skill",
+      "clink-cli",
+      "legacy_cli",
+      "customerApiKey"
+    ]
+  },
+  {
+    file: "README-zh.md",
+    contains: [
+      "Clink MCP",
+      "clink-integ-cli",
+      "clink://skill/rules",
+      "clink-payment",
+      "next_action",
+      "prepare_payment",
+      "execute_payment",
+      "get_operation",
+      "https://api.clinkbill.com/mcp",
+      "https://uat-api.clinkbill.com/mcp"
+    ],
+    notContains: [
+      "https://api.clinkbill.dev",
+      "agentic-payment-skills",
+      "openclaw-payment-skills",
+      "clink-payment-skill",
+      "clink-cli",
+      "legacy_cli",
+      "customerApiKey"
     ]
   },
   {
@@ -193,17 +249,76 @@ const moduleExpectations = [
     ]
   },
   {
-    file: "scripts/load_payment_skill_contexts.mjs",
+    file: "scripts/load_mcp_skill_context.mjs",
     contains: [
-      "--dependency",
-      "selectedDependencies",
-      "contextPathForResults",
-      "agentic-payment-skills.md",
-      "openclaw-payment-skills.md",
+      "CLINK_MCP_RULES_PATH",
+      "CLINK_MCP_SKILL_PATH",
+      "clink://skill/rules",
+      "mcp-skill-context",
+      "clink-payment",
+      "vendored-contract",
+      "parseSkillName",
+      "resolveEdition",
+      "getStatus",
+      "--print-path"
+    ],
+    notContains: [
       "codeload.github.com",
       "downloadZip",
-      "zip-download",
-      "unzip"
+      "unzip",
+      "--dependency"
+    ]
+  },
+  {
+    file: "references/clink-mcp-payment-skill.md",
+    contains: [
+      "Clink MCP",
+      "clink-payment",
+      "https://api.clinkbill.com/mcp",
+      "https://uat-api.clinkbill.com/mcp",
+      "clink://skill/rules",
+      "get_skill_manifest",
+      "streamable HTTP",
+      "discover_catalog",
+      "get_product",
+      "create_checkout",
+      "complete_checkout",
+      "get_order",
+      "get_account_state",
+      "start_payment_method_action",
+      "prepare_payment",
+      "execute_payment",
+      "create_purchase_instruction",
+      "list_spendable_instructions",
+      "start_instruction_action",
+      "start_refund",
+      "execute_refund",
+      "get_refund",
+      "get_risk_rules",
+      "get_credential",
+      "confirm_result",
+      "merchantUrl",
+      "NOT_SUBMITTED",
+      "get_operation",
+      "next_action",
+      "PROVIDE_INPUT",
+      "CONFIRM",
+      "REDIRECT_USER",
+      "SETUP_REQUIRED",
+      "POLL_OPERATION",
+      "WAIT_OPERATION",
+      "CONTACT_SUPPORT",
+      "operationId",
+      "actionId",
+      "expectedRevision"
+    ],
+    notContains: [
+      "legacy_cli",
+      "agentic-payment-skills",
+      "clink-payment-skill",
+      "clink-cli",
+      "customerApiKey",
+      "CLINK_CUSTOMER_API_KEY"
     ]
   },
   {
@@ -220,13 +335,15 @@ const moduleExpectations = [
       "POST /order/payment-session",
       "WEBHOOK customer.verify",
       "merchant skill for generic agent integration",
-      "payment-skill-contexts",
-      "codeload.github.com",
+      "mcp-skill-context",
+      "load_mcp_skill_context",
+      "CLINK_MCP_RULES_PATH",
+      "CLINK_MCP_SKILL_PATH",
+      "clink://skill/rules",
       "OpenClaw agent review",
-      "generic agent review",
-      "CLINK_AGENTIC_PAYMENT_SKILLS_URL",
-      "CLINK_OPENCLAW_PAYMENT_SKILLS_URL"
-    ]
+      "generic agent review"
+    ],
+    notContains: ["codeload.github.com", "clink-cli", "CLINK_AGENTIC_PAYMENT_SKILLS_URL", "CLINK_OPENCLAW_PAYMENT_SKILLS_URL"]
   },
   {
     file: "references/new-user-onboarding.md",
@@ -336,11 +453,15 @@ const moduleExpectations = [
     contains: [
       "merchant skill",
       "merchant server",
-      "openclaw-payment-skills",
-      "latest available `openclaw-payment-skills` context",
+      "Clink MCP",
+      "references/clink-mcp-payment-skill.md",
+      "clink://skill/rules",
       "OpenClaw-native",
       "Session Mode",
       "Direct Mode",
+      "prepare_payment",
+      "mode: \"session\"",
+      "execute_payment",
       "POST /order/payment-session",
       "GET /order/payment-session/{sessionId}",
       "customer.verify",
@@ -348,17 +469,17 @@ const moduleExpectations = [
       "confirm_tool",
       "confirm_args",
       "resume"
-    ]
+    ],
+    notContains: ["openclaw-payment-skills", "legacy_cli", "exit code", "customerApiKey"]
   },
   {
     file: "references/generic-agent-integration.md",
     contains: [
       "merchant skill for generic agent integration",
       "OpenClaw",
-      "agentic-payment-skills",
-      "latest available `agentic-payment-skills` context",
-      "clink-payment-skill",
-      "clink-cli",
+      "Clink MCP",
+      "references/clink-mcp-payment-skill.md",
+      "clink://skill/rules",
       "agent runtime",
       "Merchant Skill / Merchant Tool",
       "merchant skill or merchant tool",
@@ -368,22 +489,26 @@ const moduleExpectations = [
       "retry target",
       "merchant server",
       "explicitly authorized charge",
-      "Node.js >= 20",
-      "npm install -g @clink-ai/clink-cli",
-      "wallet init",
-      "card binding-link",
-      "card list",
-      "customerApiKey",
-      "CLINK_CUSTOMER_API_KEY",
-      "--dry-run",
-      "status `1`",
-      "status `3`",
-      "status `4`",
-      "status `6`",
-      "original `orderId`",
+      "prepare_payment",
+      "mode: \"session\"",
+      "execute_payment",
+      "CONFIRM",
+      "next_action",
+      "get_operation",
+      "create_purchase_instruction",
+      "start_refund",
       "callback",
       "idempotency",
       "resume"
+    ],
+    notContains: [
+      "agentic-payment-skills",
+      "clink-payment-skill",
+      "clink-cli",
+      "legacy_cli",
+      "customerApiKey",
+      "CLINK_CUSTOMER_API_KEY",
+      "npm install -g @clink-ai/clink-cli"
     ]
   },
   {
@@ -394,13 +519,14 @@ const moduleExpectations = [
       "customer.verify",
       "payment handoff",
       "generic agent",
-      "card binding-link",
-      "customerApiKey",
-      "original `orderId`",
+      "clink://skill/rules",
+      "get_account_state",
+      "prepare_payment",
+      "execute_payment",
+      "next_action",
+      "get_operation",
       "refund",
-      "load_payment_skill_contexts",
-      "--dependency openclaw-payment-skills",
-      "--dependency agentic-payment-skills",
+      "load_mcp_skill_context",
       "Merchant Dashboard > Developers > API Keys",
       "clink webhook endpoint ensure",
       "CLINK_WEBHOOK_SIGNING_KEY",
@@ -410,7 +536,8 @@ const moduleExpectations = [
       "submit-visible",
       "amount-change",
       "destroy()"
-    ]
+    ],
+    notContains: ["clink-cli", "legacy_cli", "customerApiKey", "card binding-link"]
   },
   {
     file: "references/validation-workflow.md",
@@ -439,7 +566,7 @@ const moduleExpectations = [
       "onboarding checklist",
       "payment handoff contract skeleton",
       "generic agent adapter checklist",
-      "agentic-payment-skills dependency checklist",
+      "Clink MCP dependency checklist",
       "contract validation report",
       "launch-readiness checklist",
       "production promotion plan",
@@ -537,6 +664,32 @@ for (const file of requiredFiles) {
 for (const file of collectTextFiles(repoRoot)) {
   check(!hasUtf8Bom(file), `text file must not start with UTF-8 BOM: ${path.relative(repoRoot, file).replace(/\\/g, "/")}`);
 }
+
+const undocumentedMcpEndpoints = ["api.clinkbill.dev"];
+const endpointOffenders = collectTextFiles(repoRoot).filter((file) => {
+  // This file must spell the forbidden host to forbid it, so it is not part of the scan.
+  if (path.relative(repoRoot, file) === path.join("tests", "run_structure_tests.mjs")) return false;
+  const contents = fs.readFileSync(file, "utf8");
+  return undocumentedMcpEndpoints.some((host) => contents.includes(host));
+});
+check(
+  endpointOffenders.length === 0,
+  `undocumented MCP endpoint api.clinkbill.dev appears in: ${endpointOffenders
+    .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
+    .join(", ")}`
+);
+
+const mcpContractLines = exists("references/clink-mcp-payment-skill.md")
+  ? read("references/clink-mcp-payment-skill.md").split("\n")
+  : [];
+const browserPayToolRow =
+  mcpContractLines.find((line) => line.startsWith("| Browser Pay |")) || "";
+check(browserPayToolRow.includes("`get_credential`"), "Browser Pay tool row must list get_credential");
+check(browserPayToolRow.includes("`confirm_result`"), "Browser Pay tool row must list confirm_result");
+check(
+  !browserPayToolRow.includes("`decrypt_credential`"),
+  "decrypt_credential is a platform-local helper, not an MCP tool, and must not appear in the MCP tool table"
+);
 
 if (exists("SKILL.md")) {
   const skillBytes = fs.readFileSync(path.join(repoRoot, "SKILL.md"));

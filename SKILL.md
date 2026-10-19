@@ -1,6 +1,6 @@
 ---
 name: clink-integ-skills
-description: Design, scaffold, validate, and review ClinkBill/Clink payment integrations, including clink-integ-cli usage, local clink login Secret Key bootstrap, browserless manual Secret Key setup, webhook endpoint automation, product/price/subscription catalog import, checkout and subscription APIs, webhook signature verification, sandbox validation, new user onboarding, merchant skill integrations, and documentation-backed contracts.
+description: Design, scaffold, validate, and review ClinkBill/Clink payment integrations, including clink-integ-cli usage, local clink login Secret Key bootstrap, browserless manual Secret Key setup, webhook endpoint automation, product/price/subscription catalog import, checkout and subscription APIs, webhook signature verification, sandbox validation, new user onboarding, merchant skill agent payment capability through the Clink MCP server, and documentation-backed contracts.
 ---
 
 # clink-integ-skills
@@ -21,8 +21,8 @@ This skill covers four primary guidance paths:
 - standard integration, including checkout session creation, webhook contract review, and optional embedded form integration through JS SDK and `@clink-ai/clink-elements`
 - bundled clink-integ-cli first integration, including offline CLI execution, local `clink login` Secret Key bootstrap when optional Playwright is already provisioned, browserless manual Secret Key setup, CLI request-domain environment switching, catalog import, webhook endpoint automation, signing-secret sync, smoke tests, and sandbox flows
 - new user onboarding, including docs-backed first-time dashboard, account, API key, product, webhook, and first checkout setup guidance
-- merchant skill for generic agent integration, including non-OpenClaw agent runtime contracts through `agentic-payment-skills`, adapter design, `clink-cli` payment execution, callback, and task resume behavior
-- merchant skill for OpenClaw integration, including OpenClaw merchant skill integration through `openclaw-payment-skills` and merchant backend webhook support for email verification
+- merchant skill for generic agent integration, including non-OpenClaw agent runtime contracts backed by the Clink MCP server, adapter design, MCP payment execution, callback, and task resume behavior
+- merchant skill for OpenClaw integration, including OpenClaw merchant skill integration with the Clink MCP server and merchant backend webhook support for email verification
 
 It also provides support capabilities for:
 
@@ -89,7 +89,7 @@ After drafting the solution, review it with:
 
 Use this path when the user wants help with:
 
-- OpenClaw-style merchant skill integration through `openclaw-payment-skills`
+- OpenClaw-style merchant skill integration backed by the Clink MCP server
 - merchant backend webhook support for email verification via `customer.verify`
 - agent payment session design
 - payment handoff contracts
@@ -100,7 +100,8 @@ Use this path when the user wants help with:
 Read:
 
 - `references/retrieval-protocol.md`
-- run `node scripts/load_payment_skill_contexts.mjs --dependency openclaw-payment-skills --print-path`, then read the generated OpenClaw payment skill context
+- `references/clink-mcp-payment-skill.md`
+- run `node scripts/load_mcp_skill_context.mjs --print-path`, then read the generated Clink MCP payment context
 - `references/agent-integration.md`
 
 After drafting the solution, review it with:
@@ -114,10 +115,10 @@ Use this path when the user wants help with:
 
 - a merchant skill or merchant tool running inside a non-OpenClaw agent runtime
 - a merchant or platform agent that is not tied to OpenClaw
-- a generic agent runtime, third-party agent, custom orchestrator, or chat agent using `agentic-payment-skills`
-- `clink-payment-skill` and `clink-cli` dependency design
-- adapter design between the agent runtime and `agentic-payment-skills`
-- merchant `402 Payment Required` handoff from a merchant API or tool into `agentic-payment-skills`
+- a generic agent runtime, third-party agent, custom orchestrator, or chat agent paying through the Clink MCP server
+- `clink-payment` MCP connection and `clink://skill/rules` dependency design
+- adapter design between the agent runtime and the Clink MCP tools
+- merchant `402 Payment Required` handoff from a merchant API or tool into a Clink MCP payment
 - callback, polling, queue, or recovery design for payment completion
 - agent task resume behavior after merchant confirmation
 - generic payment handoff contracts
@@ -125,7 +126,8 @@ Use this path when the user wants help with:
 Read:
 
 - `references/retrieval-protocol.md`
-- run `node scripts/load_payment_skill_contexts.mjs --dependency agentic-payment-skills --print-path`, then read the generated generic agent payment skill context
+- `references/clink-mcp-payment-skill.md`
+- run `node scripts/load_mcp_skill_context.mjs --print-path`, then read the generated Clink MCP payment context
 - `references/generic-agent-integration.md`
 
 After drafting the solution, review it with:
@@ -174,8 +176,9 @@ After drafting the answer, review it with:
 
 - run doc-dependent work through `node scripts/load_official_docs.mjs`
 - treat docs loading as a check-and-refresh gate, not as an unconditional refresh step
-- for merchant skill for OpenClaw integration, run `node scripts/load_payment_skill_contexts.mjs --dependency openclaw-payment-skills --print-path` before generating code, integration guidance, or review output, then read the generated payment skill context
-- for merchant skill for generic agent integration, run `node scripts/load_payment_skill_contexts.mjs --dependency agentic-payment-skills --print-path` before generating code, integration guidance, or review output, then read the generated payment skill context
+- for merchant skill for OpenClaw integration, run `node scripts/load_mcp_skill_context.mjs --print-path` before generating code, integration guidance, or review output, then read the generated Clink MCP payment context
+- for merchant skill for generic agent integration, run `node scripts/load_mcp_skill_context.mjs --print-path` before generating code, integration guidance, or review output, then read the generated Clink MCP payment context
+- when the Host already has the `clink` MCP connection, the authoritative payment rules are the server's `clink://skill/rules` resource (or `get_skill_manifest` with `include_rules: true`); read them instead of trusting the local context when the two disagree
 - prefer the smallest set of local docs needed for the task
 - route the request to the correct scenario before designing the flow
 - read only the modules needed for the current task
@@ -189,18 +192,21 @@ After drafting the answer, review it with:
 - on POSIX systems, require CLI profiles and `.env` files containing Secret Keys or webhook signing secrets to be written with mode `0600`
 - for browserless, cloud IDE, low-code, or sandbox environments where `clink login` cannot run, ask only for `CLINK_SECRET_KEY` when authentication is needed; store it with `clink auth secret set --api-key env:CLINK_SECRET_KEY --env sandbox`; do not initially ask for `CLINK_WEBHOOK_SIGNING_KEY`
 - for a complete charging or subscription integration, prefer `clink webhook endpoint ensure --url <public-webhook-url> --events commerce --save-secret --json`; a one-time checkout may use `checkout,disputes`, a subscription integration must use at least `checkout,subscriptions,disputes`, and a flow that synchronizes saved payment methods must add `payment-methods` or use `commerce`
-- treat `core` as compatibility-only or a minimal demo preset: it contains exactly `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`; warn beside every `core` example that it omits `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.failed`, and `session.expired`, then direct complete charging integrations to migrate to `commerce`
+- treat `core` as compatibility-only or a minimal demo preset: it contains exactly `session.complete`, `order.succeeded`, `order.failed`, `refund.succeeded`, `subscription.created`, and `invoice.paid`; warn beside every `core` example that it omits `order.created`, `order.next_action`, `subscription.cancelled`, `subscription.past_due`, `subscription.updated.*`, `invoice.open/void`, `dispute.*`, `refund.created`, `refund.failed`, and `session.expired`, then direct complete charging integrations to migrate to `commerce`
 - for cloud-hosted platforms, low-code platforms, cloud IDEs, sandbox runtimes, and similar browserless hosted environments, do not hand off a local bootstrap script for the user to copy `CLINK_WEBHOOK_SIGNING_KEY` when the agent can run `clink webhook endpoint ensure --save-secret --show-secret --json` and write platform Secrets itself
 - if the user asks for implementation and no codebase is present, identify or ask for the backend language before writing code
 - if the user asks for implementation guidance, help the coding agent decide what to build before attempting project-specific code
 - for standard integration, clarify product mode before designing checkout creation
+- for server API calls, send `X-API-Key` and a freshly generated millisecond `X-Timestamp`; production accepts roughly +/-2 minutes while sandbox is currently much more lenient
 - keep trusted local `clink checkout` commands available for operator-controlled full payloads, but make generated public checkout starters accept only server-defined `priceKey` or `planKey`; amounts, currency, product/price IDs, `merchantReferenceId`, return URLs, and payment settings remain server-authoritative
 - for Elements integration, treat Elements as a Standard Integration frontend path, not a hosted checkout page or separate top-level integration route
 - for Elements implementation, keep order creation and checkout session creation on the server, use only frontend-safe `publishKey`, `environment`, and `sessionId` in browser code, and keep webhook reconciliation authoritative
+- for Elements requests, use `returnUrl` with `{ELEMENTS_SESSION_ID}`; `redirectUrl` is a response field for action-required flows, not the request field
+- for Elements, return only the server-created `sessionId` from the merchant API; `publishKey` and `environment` come from frontend deployment configuration
 - for Elements implementation, inspect the merchant site's colors, design tokens, CSS variables, theme config, computed styles, and radius scale when available, then map them into frontend-safe Elements `presetOptions`
 - for Elements frontend-only implementation, identify or ask for the frontend framework before writing framework-specific code
-- for merchant skill for OpenClaw integration, separate merchant skill, merchant server, and `openclaw-payment-skills` responsibilities
-- for merchant skill for generic agent integration, separate merchant skill or tool, agent runtime, adapter, merchant server, `agentic-payment-skills`, callback, and resume responsibilities
+- for merchant skill for OpenClaw integration, separate merchant skill, merchant server, and Clink MCP server responsibilities
+- for merchant skill for generic agent integration, separate merchant skill or tool, agent runtime, adapter, merchant server, Clink MCP server, console, and resume responsibilities
 - when the user asks for developer help, prefer producing executable artifacts such as checklists, sample payloads, contract skeletons, and validation reports
 - for validation tasks, prefer `node scripts/lint_contract.mjs`, `node scripts/lint_webhook_design.mjs`, and `node scripts/generate_guidance_artifacts.mjs`
 - resolve the target environment before generating any code or configuration; use the resolved base URL in all generated code
@@ -212,10 +218,17 @@ After drafting the answer, review it with:
 - use only "sandbox" and "production" as user-facing environment terms; do not expose internal naming such as "uat" or "prod" unless the output specifically targets developers who need the internal mapping
 - do not generate production rollout guidance or production base URLs before the production validation gate completes successfully
 - if the current task needs official docs, do not read or cite the cached official docs before running the freshness check command
-- if the current task depends on `agentic-payment-skills` or `openclaw-payment-skills`, do not generate or review code from static memory alone; refresh and read the latest available payment skill context first
+- if the current task depends on the Clink MCP payment capability, do not generate or review code from static memory alone; read `references/clink-mcp-payment-skill.md` and, when the Host has the `clink` MCP connection, the server's `clink://skill/rules` resource first
+- never restate the MCP payment ruleset from memory: the server-hosted rules supersede any locally installed skill text, and a live `next_action` beats both
+- running `node scripts/load_mcp_skill_context.mjs` means: load a local Clink MCP payment context snapshot into this skill's `.cache/mcp-skill-context` in priority order (`CLINK_MCP_RULES_PATH`, then `CLINK_MCP_SKILL_PATH`, then the vendored `references/clink-mcp-payment-skill.md`), never mutate the `clink-mcp-service` repository, and treat the local context as a design aid rather than the runtime authority
+- require generated MCP payment code to branch only on the closed `next_action.type` set, to treat a missing `next_action` as a terminal Operation, and to recover an unknown result only through `get_operation`
+- require generated MCP payment code to submit an execute call at most once per frozen `CONFIRM`, using only its `operationId`, `actionId`, and `expectedRevision`
+- require one goal to keep exactly one in-flight Operation, and never let a timeout, transport failure, unknown result, or OAuth step-up authorize a second prepare or execute for that goal
+- never overwrite another installed payment skill's package directory when installing the `clink-payment` MCP skill; install it under its own `clink-payment/` directory
+- do not describe any command-line payment tool, process exit code, or customer API key as the payment capability; payments go exclusively through the Clink MCP tools
 - running `node scripts/load_official_docs.mjs` means: use cache if it is within 7 days, refresh only if missing or older than 7 days, and fall back to stale cache only when refresh fails
-- running `node scripts/load_payment_skill_contexts.mjs` means: download the latest GitHub codeload zip payment skill context into this skill's `.cache` when possible, never mutate sibling payment skill worktrees, and fall back to local sibling skill files only with an explicit warning
 - do not mix standard integration, merchant skill for generic agent integration, and merchant skill for OpenClaw integration unless the user explicitly wants multiple paths
+- do not describe a command-line payment tool, its exit-code contract, or a customer API key as the payment capability in any merchant skill guidance
 - do not treat `merchantReferenceId` as an idempotency key
 - do not pass an absolute URL, scheme-relative URL, backslash path, parent path, or other origin/base-path escape to authenticated `clink api request`; it accepts only relative API paths below the configured base
 - do not leave Secret-bearing CLI profiles or `.env` files broader than mode `0600` on POSIX systems
@@ -242,7 +255,11 @@ After drafting the answer, review it with:
 - do not present `clink webhook fixture` or `clink webhook simulate` as a real Clink sandbox Merchant Webhook UAT; require an actual Clink-to-endpoint sandbox delivery before claiming real webhook E2E completion
 - do not treat local fixtures, mocks, simulations, or signed replays as Clink server events
 - require webhook handlers to accept only integer second or millisecond `X-Clink-Timestamp` values within 300 seconds, verify the signature over the unmodified raw body before JSON parsing or normalization, reject malformed payloads and unknown event types with non-2xx responses, and use a durable Inbox keyed by `event.id` even within the timestamp window
-- do not assume a public refund-create API unless local docs explicitly show one
+- use the documented public refund API `POST /refund` with `refundMerchantOrderId` idempotency, query with `GET /refund/{id}` before retrying an unknown result, and reconcile `refund.created`, `refund.succeeded`, and `refund.failed` idempotently
+- subscribe to `order.created`, `order.next_action`, `order.succeeded`, and `order.failed`; model multiple Orders per Session as separate payment attempts and keep Session lifecycle separate from payment status
+- webhook verification must check `X-Clink-SignType: SHA256`, HMAC SHA-256 over the raw body, and a constant-time signature comparison in addition to timestamp freshness
+- after retry exhaustion, retain a dead-letter/outbox record and run active reconciliation before declaring an event or payment resolved
+- when an agent uses MCP, branch only on the closed `next_action` set and recover an interrupted write through the same Operation; do not blindly retry a timed-out payment
 - do not describe merchant skill integration as a plain checkout redirect flow
 - do not describe Elements as hosted checkout, and do not make modal checkout the default Elements layout
 - do not leave Elements styling on generic defaults when the merchant site's colors or design tokens are discoverable; adapt `theme`, `primaryColor`, `radius`, and skeleton behavior through `presetOptions`
@@ -261,6 +278,7 @@ After drafting the answer, review it with:
 - `references/elements-integration.md`
 - `references/agent-integration.md`
 - `references/generic-agent-integration.md`
+- `references/clink-mcp-payment-skill.md`
 - `references/output-artifacts.md`
 - `references/validation-workflow.md`
 - `references/review-checklist.md`
