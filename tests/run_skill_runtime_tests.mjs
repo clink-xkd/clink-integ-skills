@@ -141,6 +141,16 @@ async function main() {
   check(mcpAgent.route === "merchant_agent_integration", "MCP agent prompt should route to merchant_agent_integration");
   check(mcpAgent.artifacts.some((item) => item.name === "payment_handoff_contract"), "MCP agent prompt should preserve payment handoff artifact");
   check(!mcpAgent.artifacts.some((item) => item.name === "mcp_agent_integration"), "MCP agent prompt must not emit the retired MCP reference artifact");
+  for (const artifactName of [
+    "mcp_oauth_pkce_checklist",
+    "mcp_token_scope_matrix",
+    "wallet_instruction_action_map",
+    "ucp_checkout_delivery_flow",
+    "browser_pay_contract",
+    "operation_recovery_matrix",
+  ]) {
+    check(mcpAgent.artifacts.some((item) => item.name === artifactName), `MCP agent prompt should emit ${artifactName}`);
+  }
 
   const docsQuestion = await runSkillRuntime({
     prompt: "Show me the public API to create a refund in Clink.",
@@ -294,6 +304,10 @@ async function main() {
   check(genericAgent.route === "merchant_agent_integration", "generic agent payment prompt should route to merchant_agent_integration");
   check(genericAgent.artifacts.some((item) => item.name === "payment_handoff_contract"), "generic agent payment prompt should emit payment_handoff_contract");
   check(genericAgent.artifacts.some((item) => item.name === "ownership_matrix"), "generic agent payment prompt should emit ownership_matrix");
+  check(
+    !genericAgent.artifacts.some((item) => item.name === "mcp_oauth_pkce_checklist"),
+    "generic agent prompt without MCP feature scope should not emit MCP-specific artifacts"
+  );
   check(
     genericAgent.notes.every((item) => !item.includes("load_payment_skill_contexts")),
     "agent payment prompts must not recommend the retired CLI context loader"

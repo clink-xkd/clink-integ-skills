@@ -290,6 +290,7 @@ const moduleExpectations = [
       "create_purchase_instruction",
       "list_spendable_instructions",
       "start_instruction_action",
+      "get_instruction",
       "start_refund",
       "execute_refund",
       "get_refund",
@@ -297,6 +298,8 @@ const moduleExpectations = [
       "get_credential",
       "confirm_result",
       "merchantUrl",
+      "resources.payment_order_id",
+      "resources.payment_execution_detail_id",
       "NOT_SUBMITTED",
       "get_operation",
       "next_action",
@@ -573,7 +576,13 @@ const moduleExpectations = [
       "CLI environment checklist",
       "elements_frontend_checklist",
       "elements_brand_theme_plan",
-      "promotion_code_ui_contract"
+      "promotion_code_ui_contract",
+      "mcp_oauth_pkce_checklist",
+      "mcp_token_scope_matrix",
+      "wallet_instruction_action_map",
+      "ucp_checkout_delivery_flow",
+      "browser_pay_contract",
+      "operation_recovery_matrix"
     ]
   },
   {
