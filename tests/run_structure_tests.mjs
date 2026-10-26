@@ -298,6 +298,8 @@ const moduleExpectations = [
       "get_credential",
       "confirm_result",
       "merchantUrl",
+      "credential.orderId",
+      "credential.paymentExecutionDetailId",
       "resources.payment_order_id",
       "resources.payment_execution_detail_id",
       "NOT_SUBMITTED",

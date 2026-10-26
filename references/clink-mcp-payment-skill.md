@@ -202,14 +202,15 @@ The flow is `get_credential` → fill the merchant's card form → observe the m
   `operationId`. Opening a link is not proof that authorization completed.
 - Credential issuance is not payment. `SUCCEEDED` on the issuing Operation only proves a credential was
   issued, and a later `get_operation` read returns that issuance state without any credential.
-- Preserve the issuing response's `operation_id` as the `operationId` for `confirm_result`. For both
-  an already-decrypted `credential.card` response and an encrypted `credential.key` /
-  `credential.payload` response after platform-side decryption, take the confirmation identifiers
-  from the issuance response's `resources.payment_order_id` and
-  `resources.payment_execution_detail_id`, mapping them to `orderId` and
-  `paymentExecutionDetailId`. A later `get_operation` read omits the credential, so never expect it
-  to recover these identifiers. It records an agent report: it never executes a payment and never
-  independently verifies merchant success.
+- Preserve the issuing response's `operation_id` as the `operationId` for `confirm_result`. Prefer
+  `credential.orderId` and `credential.paymentExecutionDetailId` when the already-decrypted
+  credential carries them; otherwise use the issuance response's
+  `resources.payment_order_id` and `resources.payment_execution_detail_id`, mapping them to
+  `orderId` and `paymentExecutionDetailId`. The encrypted `credential.key` /
+  `credential.payload` response therefore requires the `resources.*` fallback after platform-side
+  decryption. A later `get_operation` read omits the credential, so never expect it to recover these
+  identifiers. It records an agent report: it never executes a payment and never independently
+  verifies merchant success.
 - `outcome` is `SUCCEEDED` (the merchant explicitly confirmed), `FAILED` (the merchant showed failure
   after submission), `NOT_SUBMITTED` (the card was never submitted; valid before clicking Pay), or
   `UNKNOWN` (submitted, result undeterminable). Report success only on explicit merchant confirmation.
