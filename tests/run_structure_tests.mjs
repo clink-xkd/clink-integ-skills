@@ -50,7 +50,6 @@ const requiredFiles = [
   "tests/run_skill_runtime_tests.mjs",
   "tests/run_skill_contract_tests.mjs",
   "tests/run_skill_tests.mjs",
-  "tests/run_llm_skill_tests.mjs",
   "tests/fixtures/public-docs/llms-full.txt",
   "tests/fixtures/public-docs/api-reference/openapi.json",
   "references/environment-strategy.md",
