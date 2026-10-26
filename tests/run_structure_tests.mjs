@@ -285,6 +285,7 @@ const moduleExpectations = [
       "get_order",
       "get_account_state",
       "start_payment_method_action",
+      "start_agent_pay_registration",
       "prepare_payment",
       "execute_payment",
       "create_purchase_instruction",
@@ -309,6 +310,9 @@ const moduleExpectations = [
       "CONFIRM",
       "REDIRECT_USER",
       "SETUP_REQUIRED",
+      "PURCHASE_INSTRUCTION",
+      "ACTIVE",
+      "PENDING",
       "POLL_OPERATION",
       "WAIT_OPERATION",
       "CONTACT_SUPPORT",
@@ -322,7 +326,8 @@ const moduleExpectations = [
       "clink-payment-skill",
       "clink-cli",
       "customerApiKey",
-      "CLINK_CUSTOMER_API_KEY"
+      "CLINK_CUSTOMER_API_KEY",
+      "start_visa_registration"
     ]
   },
   {
